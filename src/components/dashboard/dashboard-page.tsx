@@ -271,13 +271,21 @@ export default function DashboardPage() {
   };
   
   const handleStartRowChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(0, Math.min(data.length - 1, Number(e.target.value)));
-    setStartRow(value);
+    const value = parseInt(e.target.value, 10);
+    if (isNaN(value)) {
+      setStartRow(0);
+    } else {
+      setStartRow(Math.max(0, Math.min(data.length - 1, value)));
+    }
   }
 
   const handleNumRowsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(1, Math.min(data.length, Number(e.target.value)));
-    setNumRows(value);
+    const value = parseInt(e.target.value, 10);
+    if (isNaN(value)) {
+      setNumRows(1);
+    } else {
+      setNumRows(Math.max(1, Math.min(data.length, value)));
+    }
   }
   
   chartRefs.current = chartConfigs.map((_, i) => chartRefs.current[i] ?? createRef<HTMLDivElement>());
