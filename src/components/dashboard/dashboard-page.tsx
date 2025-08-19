@@ -271,7 +271,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h1>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-shrink-0 items-center gap-2">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                     <File className="mr-2 h-4 w-4" /> Upload Data
                 </Button>
@@ -296,7 +296,7 @@ export default function DashboardPage() {
                         <CardTitle className="text-sm font-medium">Key Metrics</CardTitle>
                         <BarChart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent className="flex items-center gap-4 pt-2">
+                    <CardContent className="flex flex-wrap items-center gap-4 pt-2">
                         <div className="flex items-center gap-2">
                             <Rows className="h-5 w-5 text-primary"/>
                             <p>{data.length} Rows</p>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
                  <Card className="md:col-span-1 lg:col-span-3">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">AI Chart Suggestions</CardTitle>
                         <Button variant="ghost" size="sm" onClick={handleGetAiSuggestions} disabled={loadingSuggestions || data.length === 0}>
                             {loadingSuggestions ? (
@@ -377,11 +377,11 @@ export default function DashboardPage() {
             <Card>
               <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="font-headline">Chart Visualizations</CardTitle>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="layout-cols">Layout</Label>
                         <Select value={String(layoutCols)} onValueChange={(v) => setLayoutCols(Number(v))}>
-                            <SelectTrigger id="layout-cols" className="w-24">
+                            <SelectTrigger id="layout-cols" className="w-32">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -441,7 +441,7 @@ export default function DashboardPage() {
         )}
 
         {data.length === 0 && (
-            <div className="flex h-[60vh] flex-col items-center justify-center rounded-md border-2 border-dashed text-center">
+            <div className="flex h-[60vh] flex-col items-center justify-center rounded-md border-2 border-dashed text-center p-4">
                 <File className="h-16 w-16 text-muted-foreground" />
                 <h2 className="mt-4 text-xl font-semibold font-headline">Upload Your Data</h2>
                 <p className="mt-1 text-muted-foreground">

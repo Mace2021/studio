@@ -56,7 +56,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         <span className="sr-only">Remove Chart</span>
       </Button>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
+        <div className="sm:col-span-2">
           <Label htmlFor={`chart-type-${config.id}`}>Chart Type</Label>
           <Select
             value={config.type}
@@ -113,7 +113,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           </Select>
         </div>
         {config.type === 'stacked-bar' && (
-          <div>
+          <div className="sm:col-span-2">
             <Label htmlFor={`stack-by-${config.id}`}>Stack By (Category)</Label>
             <Select
               value={config.stackBy}
