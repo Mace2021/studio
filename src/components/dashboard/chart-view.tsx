@@ -227,7 +227,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   return (
     <Card className="flex-1" ref={ref}>
       <CardHeader>
-        <CardTitle className="truncate text-lg font-semibold">{getChartTitle()}</CardTitle>
+        <CardTitle className="text-lg font-semibold">{getChartTitle()}</CardTitle>
       </CardHeader>
       <CardContent>
         {renderChart()}

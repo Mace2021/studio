@@ -111,41 +111,44 @@ export default function DashboardPage() {
             const imgHeight = canvas.height;
             const aspectRatio = imgWidth / imgHeight;
 
-            let finalWidth, finalHeight, x, y;
-
-            if(options.chartsPerPage === 1) {
+            if (options.chartsPerPage === 1) {
                 if (i > 0) pdf.addPage();
-                finalWidth = pdfWidth * 0.8;
-                finalHeight = finalWidth / aspectRatio;
+                let finalWidth = pdfWidth * 0.8;
+                let finalHeight = finalWidth / aspectRatio;
                 if(finalHeight > pdfHeight * 0.8) {
                     finalHeight = pdfHeight * 0.8;
                     finalWidth = finalHeight * aspectRatio;
                 }
-                x = (pdfWidth - finalWidth) / 2;
-                y = (pdfHeight - finalHeight) / 2;
+                const x = (pdfWidth - finalWidth) / 2;
+                const y = (pdfHeight - finalHeight) / 2;
                 pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
             } else { // 2 charts per page
-                if (i % 2 === 0) {
-                    if (i > 0) pdf.addPage();
-                    finalWidth = pdfWidth * 0.8;
-                    finalHeight = finalWidth / aspectRatio;
-                     if(finalHeight > pdfHeight * 0.4) {
+                 if (i % 2 === 0 && i > 0) {
+                     pdf.addPage();
+                 }
+
+                 if (options.orientation === 'landscape') {
+                     // side-by-side
+                     let finalWidth = pdfWidth * 0.45;
+                     let finalHeight = finalWidth / aspectRatio;
+                      if(finalHeight > pdfHeight * 0.8) {
+                        finalHeight = pdfHeight * 0.8;
+                        finalWidth = finalHeight * aspectRatio;
+                    }
+                    const x = i % 2 === 0 ? (pdfWidth / 2 - finalWidth) / 2 : pdfWidth / 2 + (pdfWidth / 2 - finalWidth) / 2;
+                    const y = (pdfHeight - finalHeight) / 2;
+                    pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+                 } else { // portrait, top and bottom
+                     let finalWidth = pdfWidth * 0.8;
+                     let finalHeight = finalWidth / aspectRatio;
+                      if(finalHeight > pdfHeight * 0.4) {
                         finalHeight = pdfHeight * 0.4;
                         finalWidth = finalHeight * aspectRatio;
                     }
-                    x = (pdfWidth - finalWidth) / 2;
-                    y = (pdfHeight / 2 - finalHeight) / 2; // Top half
-                } else {
-                     finalWidth = pdfWidth * 0.8;
-                    finalHeight = finalWidth / aspectRatio;
-                     if(finalHeight > pdfHeight * 0.4) {
-                        finalHeight = pdfHeight * 0.4;
-                        finalWidth = finalHeight * aspectRatio;
-                    }
-                    x = (pdfWidth - finalWidth) / 2;
-                    y = pdfHeight / 2 + (pdfHeight / 2 - finalHeight) / 2; // Bottom half
-                }
-                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+                    const x = (pdfWidth - finalWidth) / 2;
+                    const y = i % 2 === 0 ? (pdfHeight / 2 - finalHeight) / 2 : pdfHeight / 2 + (pdfHeight / 2 - finalHeight) / 2;
+                     pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+                 }
             }
         }
 
