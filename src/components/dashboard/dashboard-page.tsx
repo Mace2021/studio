@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import * as xlsx from "xlsx";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
 import { askQuestion } from "@/ai/flows/ask-question-flow";
@@ -34,11 +32,6 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -90,6 +83,9 @@ export default function DashboardPage() {
     toast({ title: "Exporting PDF...", description: "Please wait while we generate your PDF." });
 
     try {
+        const { default: jsPDF } = await import("jspdf");
+        const { default: html2canvas } = await import("html2canvas");
+
         const canvas = await html2canvas(dashboardElement, {
             scale: 2,
             backgroundColor: "#0F172A",
@@ -110,7 +106,6 @@ export default function DashboardPage() {
   };
 
   const handleAddChart = () => {
-    if (!isClient) return;
     const newChart: ChartConfig = {
       id: `chart-${Date.now()}-${Math.random()}`,
       type: "bar",
