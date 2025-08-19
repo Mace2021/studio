@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import * as xlsx from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageSquareQuestion, Sparkles } from "lucide-react";
+import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
 import { askQuestion } from "@/ai/flows/ask-question-flow";
 import { Button } from "@/components/ui/button";
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                   <CardTitle className="flex items-center gap-2 font-headline">
-                      <MessageSquareQuestion className="h-6 w-6" />
+                      <MessageCircleQuestion className="h-6 w-6" />
                       Ask a question about your data
                   </CardTitle>
               </CardHeader>
