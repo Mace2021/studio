@@ -31,7 +31,7 @@ export function DataTable({ data, headers }: DataTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.slice(0, 20).map((row, rowIndex) => (
+          {data.map((row, rowIndex) => (
             <TableRow key={rowIndex}>
               {headers.map((header) => (
                 <TableCell key={`${rowIndex}-${header}`}>{String(row[header])}</TableCell>

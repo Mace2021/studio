@@ -29,9 +29,13 @@ export default function DashboardPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
+  const [startRow, setStartRow] = useState(0);
+  const [numRows, setNumRows] = useState(20);
   const { toast } = useToast();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const displayedData = data.slice(startRow, startRow + numRows);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -53,6 +57,8 @@ export default function DashboardPage() {
           setAiSuggestions([]);
           setQuestion("");
           setAnswer("");
+          setStartRow(0);
+          setNumRows(Math.min(20, jsonData.length));
           toast({ title: "Success", description: "File uploaded and parsed successfully." });
         } else {
             throw new Error("No data found in file.");
@@ -170,6 +176,16 @@ export default function DashboardPage() {
         setLoadingAnswer(false);
     }
   };
+  
+  const handleStartRowChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(0, Math.min(data.length - 1, Number(e.target.value)));
+    setStartRow(value);
+  }
+
+  const handleNumRowsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Math.max(1, Math.min(data.length, Number(e.target.value)));
+    setNumRows(value);
+  }
 
   return (
     <main className="p-4 sm:p-6 md:p-8">
@@ -309,7 +325,7 @@ export default function DashboardPage() {
                         {chartConfigs.map((config) => (
                             <div key={config.id} className="flex flex-col gap-4">
                                 <ChartControls config={config} data={data} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView config={config} data={data} />
+                                <ChartView config={config} data={displayedData} />
                             </div>
                         ))}
                     </div>
@@ -324,10 +340,20 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="font-headline">Raw Data Preview (First 20 Rows)</CardTitle>
+                <CardTitle className="font-headline">Data Preview</CardTitle>
               </CardHeader>
-              <CardContent>
-                <DataTable data={data} headers={headers} />
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                    <div className="grid gap-2">
+                        <Label htmlFor="start-row">Start Row</Label>
+                        <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32"/>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="num-rows">Number of Rows</Label>
+                        <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
+                    </div>
+                </div>
+                <DataTable data={displayedData} headers={headers} />
               </CardContent>
             </Card>
           </>
