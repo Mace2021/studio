@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, createRef, RefObject } from "react";
@@ -444,8 +445,8 @@ export default function DashboardPage() {
                     })}>
                         {chartConfigs.map((config, index) => (
                             <div key={config.id} className="flex flex-col gap-4">
-                                <ChartControls config={config} data={data} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView ref={chartRefs.current[index]} config={config} data={data} />
+                                <ChartControls config={config} data={displayedData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
+                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} />
                             </div>
                         ))}
                     </div>
@@ -496,3 +497,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    

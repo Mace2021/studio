@@ -1,3 +1,4 @@
+
 "use client";
 
 import { X } from "lucide-react";
@@ -165,3 +166,5 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     </div>
   );
 }
+
+    
