@@ -17,6 +17,7 @@ const chartTypes: { value: ChartType; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "pie", label: "Pie Chart" },
+  { value: "scatter", label: "Scatter Plot" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -42,7 +43,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Label htmlFor={`chart-type-${config.id}`}>Chart Type</Label>
           <Select
             value={config.type}
-            onValueChange={(value: ChartType) => handleConfigChange("type", value)}
+            onValuechange={(value: ChartType) => handleConfigChange("type", value)}
           >
             <SelectTrigger id={`chart-type-${config.id}`}>
               <SelectValue placeholder="Select chart type" />
