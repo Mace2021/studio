@@ -288,7 +288,7 @@ export default function DashboardPage() {
             </div>
         </div>
 
-        {data.length > 0 && (
+        {data.length > 0 ? (
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
@@ -416,31 +416,8 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-
-            <div ref={dataPreviewRef} className="overflow-x-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline">Data Preview</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                      <div className="grid gap-2">
-                          <Label htmlFor="start-row">Start Row</Label>
-                          <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32"/>
-                      </div>
-                      <div className="grid gap-2">
-                          <Label htmlFor="num-rows">Number of Rows</Label>
-                          <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
-                      </div>
-                  </div>
-                  <DataTable data={displayedData} headers={headers} />
-                </CardContent>
-              </Card>
-            </div>
           </>
-        )}
-
-        {data.length === 0 && (
+        ) : (
             <div className="flex h-[60vh] flex-col items-center justify-center rounded-md border-2 border-dashed text-center p-4">
                 <File className="h-16 w-16 text-muted-foreground" />
                 <h2 className="mt-4 text-xl font-semibold font-headline">Upload Your Data</h2>
@@ -452,6 +429,28 @@ export default function DashboardPage() {
                 </Button>
             </div>
         )}
+        
+        <div ref={dataPreviewRef} className="overflow-x-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline">Data Preview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                  <div className="grid gap-2">
+                      <Label htmlFor="start-row">Start Row</Label>
+                      <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32" disabled={data.length === 0}/>
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="num-rows">Number of Rows</Label>
+                      <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32" disabled={data.length === 0}/>
+                  </div>
+              </div>
+              <DataTable data={displayedData} headers={headers} />
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
     </main>
   );
