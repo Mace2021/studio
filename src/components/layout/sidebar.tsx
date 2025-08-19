@@ -34,9 +34,8 @@ export function AppSidebar() {
         <SidebarMenu>
           {links.map((link) => (
             <SidebarMenuItem key={link.href}>
-              <Link href={link.href} passHref legacyBehavior>
+              <Link href={link.href}>
                 <SidebarMenuButton
-                  as="a"
                   isActive={pathname === link.href}
                   className="w-full"
                 >
