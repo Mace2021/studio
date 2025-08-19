@@ -117,6 +117,7 @@ export default function DashboardPage() {
       type: "bar",
       xAxis: headers[0] || "",
       yAxis: headers[1] || headers[0] || "",
+      stackBy: headers.length > 2 ? headers[2] : undefined,
     };
     setChartConfigs([...chartConfigs, newChart]);
   };

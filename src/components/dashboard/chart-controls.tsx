@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ChartConfig, ChartType, DataRow } from "@/lib/types";
+import type { ChartConfig, DataRow } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,11 +13,12 @@ interface ChartControlsProps {
   onRemove: (id: string) => void;
 }
 
-const chartTypes: { value: ChartType; label: string }[] = [
+const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "pie", label: "Pie Chart" },
   { value: "scatter", label: "Scatter Plot" },
+  { value: "stacked-bar", label: "Stacked Bar Chart" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -59,7 +60,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Label htmlFor={`chart-type-${config.id}`}>Chart Type</Label>
           <Select
             value={config.type}
-            onValueChange={(value: ChartType) => handleConfigChange("type", value)}
+            onValueChange={(value: ChartConfig['type']) => handleConfigChange("type", value)}
           >
             <SelectTrigger id={`chart-type-${config.id}`}>
               <SelectValue placeholder="Select chart type" />
@@ -111,6 +112,27 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
+        {config.type === 'stacked-bar' && (
+          <div>
+            <Label htmlFor={`stack-by-${config.id}`}>Stack By (Category)</Label>
+            <Select
+              value={config.stackBy}
+              onValueChange={(value) => handleConfigChange("stackBy", value)}
+              disabled={headers.length === 0}
+            >
+              <SelectTrigger id={`stack-by-${config.id}`}>
+                <SelectValue placeholder="Select column" />
+              </SelectTrigger>
+              <SelectContent>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   );

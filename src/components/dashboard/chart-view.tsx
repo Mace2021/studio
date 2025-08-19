@@ -168,6 +168,45 @@ export function ChartView({ config, data }: ChartViewProps) {
                 </ScatterChart>
             </ResponsiveContainer>
         );
+      case "stacked-bar":
+        if (!config.stackBy) {
+          return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a column to "Stack By".</div>
+        }
+        
+        const transformedData: Record<string, DataRow> = {};
+        const stackKeys = new Set<string>();
+
+        data.forEach(row => {
+          const xAxisKey = String(row[config.xAxis]);
+          const stackKey = String(row[config.stackBy]);
+          const yAxisValue = parseFloat(String(row[config.yAxis]));
+
+          if (xAxisKey && stackKey && !isNaN(yAxisValue)) {
+            if (!transformedData[xAxisKey]) {
+              transformedData[xAxisKey] = { [config.xAxis]: xAxisKey };
+            }
+            transformedData[xAxisKey][stackKey] = (transformedData[xAxisKey][stackKey] || 0) + yAxisValue;
+            stackKeys.add(stackKey);
+          }
+        });
+        
+        const stackedBarData = Object.values(transformedData);
+        const sortedStackKeys = Array.from(stackKeys).sort();
+
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stackedBarData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <YAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+              <Legend />
+              {sortedStackKeys.map((key, index) => (
+                <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
     }
@@ -177,6 +216,9 @@ export function ChartView({ config, data }: ChartViewProps) {
     if (!config.xAxis || !config.yAxis) return "Untitled Chart";
     if (config.type === 'pie') {
       return `Distribution of ${config.yAxis} by ${config.xAxis}`;
+    }
+     if (config.type === 'stacked-bar' && config.stackBy) {
+        return `${config.yAxis} by ${config.xAxis} (Stacked by ${config.stackBy})`;
     }
     return `${config.yAxis} by ${config.xAxis}`;
   }
