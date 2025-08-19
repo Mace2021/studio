@@ -99,10 +99,12 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
-              <Line type="monotone" dataKey={config.yAxis} strokeWidth={2} activeDot={{ r: 6 }}>
-                {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+              <Line type="monotone" dataKey={config.yAxis} stroke="#8884d8" strokeWidth={2} activeDot={{ r: 6 }} dot={(props) => {
+                const { cx, cy, index } = props;
+                return (
+                  <circle key={`dot-${index}`} cx={cx} cy={cy} r={4} fill={COLORS[index % COLORS.length]} />
+                );
+              }}>
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -236,3 +238,5 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   );
 });
 ChartView.displayName = 'ChartView';
+
+    
