@@ -136,7 +136,11 @@ export function ChartView({ config, data }: ChartViewProps) {
               <ZAxis range={[100]} />
               <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
               <Legend />
-              <Scatter name="Data Points" data={data} fill="hsl(var(--primary))" />
+              <Scatter name="Data Points" data={data}>
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
         );
