@@ -45,3 +45,5 @@ export function DataTable({ data, headers }: DataTableProps) {
     </div>
   );
 }
+
+    
