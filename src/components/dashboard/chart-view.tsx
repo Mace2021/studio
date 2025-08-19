@@ -16,13 +16,21 @@ const PIE_CHART_LABEL_THRESHOLD = 5;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const mainPayload = payload[0].payload.name === 'Other' && payload[0].payload.payload ? payload[0].payload.payload : payload;
-    const isOther = payload[0].payload.name === 'Other';
-    
+    const data = payload[0].payload;
+    // For scatter plot, the payload structure is different.
+    if (payload[0].dataKey) {
+        return (
+             <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+                <p className="font-bold">{`${payload[0].name}: ${Number(payload[0].value).toLocaleString()}`}</p>
+                <p className="font-bold">{`${payload[1].name}: ${Number(payload[1].value).toLocaleString()}`}</p>
+            </div>
+        )
+    }
+
     return (
-      <div className="rounded-md border bg-background/90 p-2 shadow-sm max-h-48 overflow-y-auto">
-        <p className="font-bold">{isOther ? 'Other' : label}</p>
-        {mainPayload.map((entry: any, index: number) => (
+      <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+        <p className="font-bold">{label}</p>
+        {payload.map((entry: any, index: number) => (
           <p key={`item-${index}`} style={{ color: entry.color }} className="text-xs">
             {`${entry.name}: ${Number(entry.value).toLocaleString()}`}
           </p>
@@ -139,17 +147,27 @@ export function ChartView({ config, data }: ChartViewProps) {
           </ResponsiveContainer>
         );
       case "scatter":
+        const scatterData = data.map(d => ({
+            ...d,
+            [config.xAxis]: Number(d[config.xAxis]),
+            [config.yAxis]: Number(d[config.yAxis]),
+        })).filter(d => !isNaN(d[config.xAxis] as number) && !isNaN(d[config.yAxis] as number));
+        
+        if (scatterData.length === 0) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid numerical data for Scatter Plot.</div>
+        }
+
         return (
            <ResponsiveContainer width="100%" height={300}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis type="number" dataKey={config.xAxis} name={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis type="number" dataKey={config.yAxis} name={config.yAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <ZAxis range={[100]} />
+              <ZAxis range={[64]} />
               <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
               <Legend />
-              <Scatter name="Data Points" data={data}>
-                {data.map((entry, index) => (
+              <Scatter name="Data Points" data={scatterData}>
+                {scatterData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Scatter>
