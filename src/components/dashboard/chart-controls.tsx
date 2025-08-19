@@ -43,7 +43,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Label htmlFor={`chart-type-${config.id}`}>Chart Type</Label>
           <Select
             value={config.type}
-            onValuechange={(value: ChartType) => handleConfigChange("type", value)}
+            onValueChange={(value: ChartType) => handleConfigChange("type", value)}
           >
             <SelectTrigger id={`chart-type-${config.id}`}>
               <SelectValue placeholder="Select chart type" />
