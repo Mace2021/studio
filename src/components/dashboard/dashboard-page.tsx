@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
+  const dataPreviewRef = useRef<HTMLDivElement>(null);
   
   const displayedData = data.slice(startRow, startRow + numRows);
 
@@ -150,6 +151,27 @@ export default function DashboardPage() {
                      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
                  }
             }
+        }
+        
+        if (dataPreviewRef.current) {
+            pdf.addPage();
+            const canvas = await html2canvas(dataPreviewRef.current, { scale: 2, backgroundColor: "#0F172A", useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const aspectRatio = imgWidth / imgHeight;
+            
+            let finalWidth = pdfWidth * 0.9;
+            let finalHeight = finalWidth / aspectRatio;
+             if(finalHeight > pdfHeight * 0.9) {
+                finalHeight = pdfHeight * 0.9;
+                finalWidth = finalHeight * aspectRatio;
+            }
+            const x = (pdfWidth - finalWidth) / 2;
+            const y = (pdfHeight - finalHeight) / 2;
+
+            pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
         }
 
         pdf.save(`datasight-dashboard-${new Date().toISOString()}.pdf`);
@@ -395,24 +417,26 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-headline">Data Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                    <div className="grid gap-2">
-                        <Label htmlFor="start-row">Start Row</Label>
-                        <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32"/>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="num-rows">Number of Rows</Label>
-                        <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
-                    </div>
-                </div>
-                <DataTable data={displayedData} headers={headers} />
-              </CardContent>
-            </Card>
+            <div ref={dataPreviewRef}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline">Data Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                      <div className="grid gap-2">
+                          <Label htmlFor="start-row">Start Row</Label>
+                          <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32"/>
+                      </div>
+                      <div className="grid gap-2">
+                          <Label htmlFor="num-rows">Number of Rows</Label>
+                          <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
+                      </div>
+                  </div>
+                  <DataTable data={displayedData} headers={headers} />
+                </CardContent>
+              </Card>
+            </div>
           </>
         )}
 
