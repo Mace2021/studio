@@ -1,4 +1,4 @@
-export type ChartType = "bar" | "line" | "pie" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar";
+export type ChartType = "bar" | "line" | "pie" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar" | "pictogram";
 
 export interface ChartConfig {
   id: string;

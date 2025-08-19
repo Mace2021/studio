@@ -21,6 +21,7 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "stacked-bar", label: "Stacked Bar Chart" },
   { value: "grouped-bar", label: "Grouped Bar Chart" },
   { value: "heatmap", label: "Heatmap" },
+  { value: "pictogram", label: "Pictogram" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -33,6 +34,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
   const getXAxisLabel = () => {
     switch (config.type) {
         case "pie": return "Category (Name)";
+        case "pictogram": return "Category";
         case "scatter": return "X-Axis (Numeric)";
         case "heatmap": return "X-Axis (Category)";
         default: return "X-Axis";
@@ -42,6 +44,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
   const getYAxisLabel = () => {
     switch (config.type) {
         case "pie": return "Value";
+        case "pictogram": return "Value (Numeric)";
         case "scatter": return "Y-Axis (Numeric)";
         case "heatmap": return "Y-Axis (Category)";
         default: return "Y-Axis (Value)";

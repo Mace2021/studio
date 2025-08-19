@@ -7,6 +7,7 @@ import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { scaleLinear } from 'd3-scale';
+import { User } from "lucide-react";
 
 interface ChartViewProps {
   config: ChartConfig;
@@ -258,6 +259,40 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                     </Scatter>
                 </ScatterChart>
             </ResponsiveContainer>
+        );
+      case "pictogram":
+        const pictogramData = data.map(row => ({
+          name: String(row[config.xAxis]),
+          value: parseFloat(String(row[config.yAxis])),
+        })).filter(item => item.name && !isNaN(item.value));
+
+        if (pictogramData.length === 0) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid data for Pictogram.</div>
+        }
+
+        const maxVal = Math.max(...pictogramData.map(d => d.value));
+        const valuePerIcon = Math.ceil(maxVal / 20); // Aim for a max of 20 icons
+
+        return (
+          <div className="space-y-4 pt-4">
+              {pictogramData.map((item, index) => (
+                  <div key={index} className="flex flex-col">
+                      <div className="flex items-end gap-2">
+                        <span className="w-24 shrink-0 truncate font-medium" title={item.name}>{item.name}</span>
+                        <div className="flex flex-wrap items-center gap-1">
+                            {[...Array(Math.ceil(item.value / valuePerIcon))].map((_, i) => (
+                                <User key={i} className="h-5 w-5" style={{ color: COLORS[index % COLORS.length] }}/>
+                            ))}
+                        </div>
+                        <span className="ml-2 text-sm font-semibold">{item.value.toLocaleString()}</span>
+                      </div>
+                  </div>
+              ))}
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>= ~{valuePerIcon.toLocaleString()}</span>
+              </div>
+          </div>
         );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
