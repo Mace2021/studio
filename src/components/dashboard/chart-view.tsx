@@ -59,6 +59,14 @@ const PieTooltip = ({ active, payload }: any) => {
     return null;
 };
 
+const CustomizedDot = (props: any) => {
+    const { cx, cy, stroke, payload, value, index } = props;
+  
+    return (
+      <circle cx={cx} cy={cy} r={4} stroke={COLORS[index % COLORS.length]} strokeWidth={2} fill={COLORS[index % COLORS.length]} />
+    );
+  };
+
 export function ChartView({ config, data }: ChartViewProps) {
   const renderChart = () => {
     if (!config.xAxis || !config.yAxis) {
@@ -75,7 +83,11 @@ export function ChartView({ config, data }: ChartViewProps) {
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
-              <Bar dataKey={config.yAxis} fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey={config.yAxis} radius={[4, 4, 0, 0]}>
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         );
@@ -88,7 +100,7 @@ export function ChartView({ config, data }: ChartViewProps) {
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
-              <Line type="monotone" dataKey={config.yAxis} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: 'hsl(var(--primary))' }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey={config.yAxis} stroke="hsl(var(--primary))" strokeWidth={2} dot={<CustomizedDot />} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         );
