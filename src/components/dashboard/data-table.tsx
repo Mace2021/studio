@@ -34,7 +34,9 @@ export function DataTable({ data, headers }: DataTableProps) {
           {data.map((row, rowIndex) => (
             <TableRow key={rowIndex}>
               {headers.map((header) => (
-                <TableCell key={`${rowIndex}-${header}`} className="whitespace-nowrap">{String(row[header])}</TableCell>
+                <TableCell key={`${rowIndex}-${header}`} className="whitespace-nowrap">
+                  {String(row[header])}
+                </TableCell>
               ))}
             </TableRow>
           ))}
