@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, ZAxis
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell
 } from "recharts";
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,21 +14,8 @@ interface ChartViewProps {
 const COLORS = ["#A78BFA", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#C4B5FD"];
 const PIE_CHART_LABEL_THRESHOLD = 5;
 
-const CustomTooltip = ({ active, payload, label, config }: any) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    if (config.type === 'scatter') {
-        const xKey = payload[0]?.dataKey;
-        const yKey = payload[1]?.dataKey;
-        const point = payload[0]?.payload;
-        if (!xKey || !yKey || !point) return null;
-        return (
-             <div className="rounded-md border bg-background/90 p-2 shadow-sm">
-                <p className="font-bold">{`${xKey}: ${Number(point[xKey]).toLocaleString()}`}</p>
-                <p className="font-bold">{`${yKey}: ${Number(point[yKey]).toLocaleString()}`}</p>
-            </div>
-        )
-    }
-
     return (
       <div className="rounded-md border bg-background/90 p-2 shadow-sm">
         <p className="font-bold">{label}</p>
@@ -91,7 +78,7 @@ export function ChartView({ config, data }: ChartViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
               <Bar dataKey={config.yAxis} radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => (
@@ -108,7 +95,7 @@ export function ChartView({ config, data }: ChartViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
               <Line type="monotone" dataKey={config.yAxis} stroke="hsl(var(--primary))" strokeWidth={2} dot={<CustomizedDot />} activeDot={{ r: 6 }} />
             </LineChart>
@@ -148,41 +135,6 @@ export function ChartView({ config, data }: ChartViewProps) {
             </PieChart>
           </ResponsiveContainer>
         );
-      case "scatter":
-        const scatterData = data.map(d => {
-            const x = Number(d[config.xAxis]);
-            const y = Number(d[config.yAxis]);
-            if (isNaN(x) || isNaN(y)) {
-                return null;
-            }
-            return {
-                ...d,
-                [config.xAxis]: x,
-                [config.yAxis]: y,
-            };
-        }).filter((d): d is DataRow => d !== null);
-        
-        if (scatterData.length === 0) {
-            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid numerical data for Scatter Plot.</div>
-        }
-
-        return (
-           <ResponsiveContainer width="100%" height={300}>
-            <ScatterChart>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="number" dataKey={config.xAxis} name={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis type="number" dataKey={config.yAxis} name={config.yAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <ZAxis range={[64]} />
-              <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
-              <Legend />
-              <Scatter name="Data Points" data={scatterData}>
-                {scatterData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-        );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
     }
@@ -192,9 +144,6 @@ export function ChartView({ config, data }: ChartViewProps) {
     if (!config.xAxis || !config.yAxis) return "Untitled Chart";
     if (config.type === 'pie') {
       return `Distribution of ${config.yAxis} by ${config.xAxis}`;
-    }
-    if (config.type === 'scatter') {
-        return `Scatter Plot of ${config.yAxis} vs ${config.xAxis}`;
     }
     return `${config.yAxis} by ${config.xAxis}`;
   }

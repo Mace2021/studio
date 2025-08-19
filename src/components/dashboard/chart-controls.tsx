@@ -17,7 +17,6 @@ const chartTypes: { value: ChartType; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "pie", label: "Pie Chart" },
-  { value: "scatter", label: "Scatter Plot" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
