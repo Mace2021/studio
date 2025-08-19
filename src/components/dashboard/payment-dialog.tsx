@@ -86,16 +86,25 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
           <DialogClose asChild>
             <Button variant="outline" disabled={isProcessing}>Cancel</Button>
           </DialogClose>
-          <Button onClick={handlePayment} disabled={isProcessing}>
-            {isProcessing ? (
-                <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                </>
-            ) : (
-                "Proceed to Payment"
-            )}
-          </Button>
+          {selectedOption === 'subscription' ? (
+              <Button onClick={handlePayment} disabled={isProcessing}>
+                {isProcessing ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                    </>
+                ) : (
+                    "Proceed to Payment"
+                )}
+              </Button>
+          ) : (
+             <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                <input type="hidden" name="cmd" value="_s-xclick" />
+                <input type="hidden" name="hosted_button_id" value="RQKFJNGUZ732E" />
+                <input type="hidden" name="currency_code" value="USD" />
+                <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_paynowCC_LG.gif" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now" />
+            </form>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
