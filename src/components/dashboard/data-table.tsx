@@ -9,19 +9,21 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { DataRow } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps {
   data: DataRow[];
   headers: string[];
+  className?: string;
 }
 
-export function DataTable({ data, headers }: DataTableProps) {
+export function DataTable({ data, headers, className }: DataTableProps) {
   if (!data || data.length === 0) {
     return <p className="text-muted-foreground">No data to display.</p>;
   }
 
   return (
-    <div className="rounded-md border">
+    <div className={cn("rounded-md border", className)}>
       <Table>
         <TableHeader>
           <TableRow>
