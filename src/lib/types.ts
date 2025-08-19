@@ -1,4 +1,4 @@
-export type ChartType = "bar" | "line" | "pie" | "scatter" | "stacked-bar";
+export type ChartType = "bar" | "line" | "pie" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar";
 
 export interface ChartConfig {
   id: string;
@@ -6,6 +6,7 @@ export interface ChartConfig {
   xAxis: string;
   yAxis: string;
   stackBy?: string;
+  value?: string; // For heatmap
 }
 
 export type DataRow = Record<string, string | number>;

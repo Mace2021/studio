@@ -6,6 +6,7 @@ import {
 import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { scaleLinear } from 'd3-scale';
 
 interface ChartViewProps {
   config: ChartConfig;
@@ -25,6 +26,16 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
                 <p className="font-bold">{`${config.yAxis}: ${point.y.toLocaleString()}`}</p>
             </div>
         )
+      }
+      if (config.type === 'heatmap') {
+          const item = payload[0].payload;
+          return (
+            <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+                <p className="font-bold">{item.y}</p>
+                <p className="text-sm">{config.xAxis}: {item.x}</p>
+                <p className="text-sm">{config.value}: {item.value}</p>
+            </div>
+          )
       }
       return (
         <div className="rounded-md border bg-background/90 p-2 shadow-sm">
@@ -68,8 +79,8 @@ const PieTooltip = ({ active, payload }: any) => {
 
 export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
   const renderChart = () => {
-    if (!config.xAxis || !config.yAxis) {
-        return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for the axes.</div>
+    if ((config.type !== 'heatmap' && (!config.xAxis || !config.yAxis)) || (config.type === 'heatmap' && (!config.xAxis || !config.yAxis || !config.value))) {
+        return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
     switch (config.type) {
@@ -172,43 +183,81 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             </ResponsiveContainer>
         );
       case "stacked-bar":
+      case "grouped-bar":
         if (!config.stackBy) {
-          return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a column to "Stack By".</div>
+          return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a column to "Group By".</div>
         }
         
         const transformedData: Record<string, DataRow> = {};
-        const stackKeys = new Set<string>();
+        const groupKeys = new Set<string>();
 
         data.forEach(row => {
           const xAxisKey = String(row[config.xAxis]);
-          const stackKey = String(row[config.stackBy]);
+          const groupKey = String(row[config.stackBy]);
           const yAxisValue = parseFloat(String(row[config.yAxis]));
 
-          if (xAxisKey && stackKey && !isNaN(yAxisValue)) {
+          if (xAxisKey && groupKey && !isNaN(yAxisValue)) {
             if (!transformedData[xAxisKey]) {
               transformedData[xAxisKey] = { [config.xAxis]: xAxisKey };
             }
-            transformedData[xAxisKey][stackKey] = (transformedData[xAxisKey][stackKey] || 0) + yAxisValue;
-            stackKeys.add(stackKey);
+            transformedData[xAxisKey][groupKey] = (transformedData[xAxisKey][groupKey] || 0) + yAxisValue;
+            groupKeys.add(groupKey);
           }
         });
         
-        const stackedBarData = Object.values(transformedData);
-        const sortedStackKeys = Array.from(stackKeys).sort();
+        const chartData = Object.values(transformedData);
+        const sortedGroupKeys = Array.from(groupKeys).sort();
 
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stackedBarData} layout="vertical">
+            <BarChart data={chartData} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <YAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
-              <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
-              {sortedStackKeys.map((key, index) => (
-                <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
+              {sortedGroupKeys.map((key, index) => (
+                <Bar key={key} dataKey={key} stackId={config.type === 'stacked-bar' ? 'a' : undefined} fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} />
               ))}
             </BarChart>
           </ResponsiveContainer>
+        );
+      case "heatmap":
+        if (!config.value) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a value column.</div>
+        }
+        const xLabels = [...new Set(data.map(row => row[config.xAxis]))].sort();
+        const yLabels = [...new Set(data.map(row => row[config.yAxis]))].sort();
+        const values = data.map(row => parseFloat(String(row[config.value]))).filter(v => !isNaN(v));
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        
+        const colorScale = scaleLinear<string>().domain([min, (min+max)/2, max]).range(["#C4B5FD", "#A78BFA", "#5B21B6"]);
+
+        const heatmapData = yLabels.map(y => 
+            xLabels.map(x => {
+                const point = data.find(row => row[config.xAxis] === x && row[config.yAxis] === y);
+                const value = point ? parseFloat(String(point[config.value])) : 0;
+                return { x, y, value };
+            })
+        ).flat();
+
+        return (
+             <ResponsiveContainer width="100%" height={400}>
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 80 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="category" dataKey="x" name={config.xAxis}
+                        ticks={xLabels} stroke="hsl(var(--muted-foreground))" fontSize={12} angle={-45} textAnchor="end" height={60} />
+                    <YAxis type="category" dataKey="y" name={config.yAxis} 
+                        ticks={yLabels} stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
+                    <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
+                    <Scatter data={heatmapData} shape="square">
+                        {heatmapData.map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={!isNaN(entry.value) && entry.value !== 0 ? colorScale(entry.value) : 'hsl(var(--muted))'} r={10} />
+                        ))}
+                    </Scatter>
+                </ScatterChart>
+            </ResponsiveContainer>
         );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
@@ -220,8 +269,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     if (config.type === 'pie') {
       return `Distribution of ${config.yAxis} by ${config.xAxis}`;
     }
-     if (config.type === 'stacked-bar' && config.stackBy) {
-        return `${config.yAxis} by ${config.xAxis} (Stacked by ${config.stackBy})`;
+     if ((config.type === 'stacked-bar' || config.type === 'grouped-bar') && config.stackBy) {
+        return `${config.yAxis} by ${config.xAxis} (${config.type === 'stacked-bar' ? 'Stacked' : 'Grouped'} by ${config.stackBy})`;
+    }
+    if (config.type === 'heatmap' && config.value) {
+        return `Heatmap of ${config.value} by ${config.xAxis} and ${config.yAxis}`;
     }
     return `${config.yAxis} by ${config.xAxis}`;
   }

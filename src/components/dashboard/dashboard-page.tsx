@@ -188,6 +188,7 @@ export default function DashboardPage() {
       xAxis: headers[0] || "",
       yAxis: headers[1] || headers[0] || "",
       stackBy: headers.length > 2 ? headers[2] : undefined,
+      value: headers.length > 2 ? headers[2] : headers.length > 1 ? headers[1] : headers[0],
     };
     setChartConfigs([...chartConfigs, newChart]);
   };
@@ -404,7 +405,7 @@ export default function DashboardPage() {
                         {chartConfigs.map((config, index) => (
                             <div key={config.id} className="flex flex-col gap-4">
                                 <ChartControls config={config} data={data} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} />
+                                <ChartView ref={chartRefs.current[index]} config={config} data={data} />
                             </div>
                         ))}
                     </div>

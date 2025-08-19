@@ -19,6 +19,8 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "pie", label: "Pie Chart" },
   { value: "scatter", label: "Scatter Plot" },
   { value: "stacked-bar", label: "Stacked Bar Chart" },
+  { value: "grouped-bar", label: "Grouped Bar Chart" },
+  { value: "heatmap", label: "Heatmap" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -32,6 +34,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     switch (config.type) {
         case "pie": return "Category (Name)";
         case "scatter": return "X-Axis (Numeric)";
+        case "heatmap": return "X-Axis (Category)";
         default: return "X-Axis";
     }
   }
@@ -40,6 +43,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     switch (config.type) {
         case "pie": return "Value";
         case "scatter": return "Y-Axis (Numeric)";
+        case "heatmap": return "Y-Axis (Category)";
         default: return "Y-Axis (Value)";
     }
   }
@@ -112,15 +116,36 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        {config.type === 'stacked-bar' && (
+        {(config.type === 'stacked-bar' || config.type === 'grouped-bar') && (
           <div className="sm:col-span-2">
-            <Label htmlFor={`stack-by-${config.id}`}>Stack By (Category)</Label>
+            <Label htmlFor={`stack-by-${config.id}`}>Group By (Category)</Label>
             <Select
               value={config.stackBy}
               onValueChange={(value) => handleConfigChange("stackBy", value)}
               disabled={headers.length === 0}
             >
               <SelectTrigger id={`stack-by-${config.id}`}>
+                <SelectValue placeholder="Select column" />
+              </SelectTrigger>
+              <SelectContent>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+         {config.type === 'heatmap' && (
+          <div className="sm:col-span-2">
+            <Label htmlFor={`value-${config.id}`}>Value (Numeric)</Label>
+            <Select
+              value={config.value}
+              onValueChange={(value) => handleConfigChange("value", value)}
+              disabled={headers.length === 0}
+            >
+              <SelectTrigger id={`value-${config.id}`}>
                 <SelectValue placeholder="Select column" />
               </SelectTrigger>
               <SelectContent>
