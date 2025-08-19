@@ -48,22 +48,25 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
 
   useEffect(() => {
     if (isSdkReady && window.paypal) {
-        window.paypal.Buttons({
-            style: {
-                shape: 'rect',
-                color: 'gold',
-                layout: 'vertical',
-                label: 'subscribe'
-            },
-            createSubscription: function(data: any, actions: any) {
-              return actions.subscription.create({
-                plan_id: 'P-6WA10310SE254683XNCSO6II'
-              });
-            },
-            onApprove: function(data: any, actions: any) {
-              onPaymentSuccess('subscription');
-            }
-        }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+        const buttonContainer = document.querySelector('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+        if (buttonContainer && buttonContainer.childElementCount === 0) { // Check if button is already rendered
+            window.paypal.Buttons({
+                style: {
+                    shape: 'rect',
+                    color: 'gold',
+                    layout: 'vertical',
+                    label: 'subscribe'
+                },
+                createSubscription: function(data: any, actions: any) {
+                  return actions.subscription.create({
+                    plan_id: 'P-6WA10310SE254683XNCSO6II'
+                  });
+                },
+                onApprove: function(data: any, actions: any) {
+                  onPaymentSuccess('subscription');
+                }
+            }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+        }
     }
   }, [isSdkReady, onPaymentSuccess]);
 
@@ -71,7 +74,10 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        setIsSdkReady(false); // Reset SDK state on close
+        // When closing the dialog, you might want to clean up.
+        // For example, if the SDK script was added, you could remove it.
+        // Also reset the SDK ready state.
+        setIsSdkReady(false);
       }
       onClose();
     }}>
