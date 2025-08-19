@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import * as xlsx from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2 } from "lucide-react";
+import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageSquareQuestion, Sparkles } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
+import { askQuestion } from "@/ai/flows/ask-question-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { DataTable } from "./data-table";
 import type { ChartConfig, DataRow } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -26,6 +28,9 @@ export default function DashboardPage() {
   const [layoutCols, setLayoutCols] = useState(2);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [loadingAnswer, setLoadingAnswer] = useState(false);
   const { toast } = useToast();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +58,8 @@ export default function DashboardPage() {
           setHeaders(Object.keys(jsonData[0]));
           setChartConfigs([]);
           setAiSuggestions([]);
+          setQuestion("");
+          setAnswer("");
           toast({ title: "Success", description: "File uploaded and parsed successfully." });
         } else {
             throw new Error("No data found in file.");
@@ -146,6 +153,29 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAskQuestion = async () => {
+    if (data.length === 0 || !question) {
+        toast({ variant: "destructive", title: "Missing Input", description: "Please upload data and enter a question." });
+        return;
+    }
+    setLoadingAnswer(true);
+    setAnswer("");
+    try {
+        const dataSample = data.slice(0, 50); // Use a larger sample for answering questions
+        const result = await askQuestion({ question, columnHeaders: headers, dataSample });
+        if (result && result.answer) {
+            setAnswer(result.answer);
+        } else {
+            throw new Error("No answer returned from AI.");
+        }
+    } catch (error) {
+        console.error("AI question error:", error);
+        toast({ variant: "destructive", title: "AI Error", description: "Could not get an answer." });
+    } finally {
+        setLoadingAnswer(false);
+    }
+  };
+
   return (
     <main className="p-4 sm:p-6 md:p-8">
       <div ref={dashboardRef} className="space-y-6">
@@ -215,6 +245,44 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2 font-headline">
+                      <MessageSquareQuestion className="h-6 w-6" />
+                      Ask a question about your data
+                  </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="grid gap-2">
+                      <Label htmlFor="ai-question">Your Question</Label>
+                      <Textarea 
+                          id="ai-question"
+                          placeholder="e.g., What is the total sales amount?"
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          disabled={loadingAnswer}
+                      />
+                  </div>
+                  <Button onClick={handleAskQuestion} disabled={loadingAnswer || !question}>
+                      {loadingAnswer ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                          <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Get Answer
+                  </Button>
+                  {loadingAnswer && <p className="text-muted-foreground">Thinking...</p>}
+                  {answer && (
+                      <Alert>
+                          <AlertTitle className="font-semibold">Answer</AlertTitle>
+                          <AlertDescription className="prose prose-sm dark:prose-invert max-w-none">
+                              <p>{answer}</p>
+                          </AlertDescription>
+                      </Alert>
+                  )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
