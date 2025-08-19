@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, createRef, RefObject } from "react";
 import * as xlsx from "xlsx";
 import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
@@ -18,6 +18,7 @@ import type { ChartConfig, DataRow } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { ExportDialog, ExportOptions } from "./export-dialog";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -31,9 +32,10 @@ export default function DashboardPage() {
   const [loadingAnswer, setLoadingAnswer] = useState(false);
   const [startRow, setStartRow] = useState(0);
   const [numRows, setNumRows] = useState(20);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const { toast } = useToast();
-  const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   
   const displayedData = data.slice(startRow, startRow + numRows);
 
@@ -82,28 +84,71 @@ export default function DashboardPage() {
     reader.readAsBinaryString(file);
   };
   
-  const handleExportPDF = async () => {
-    const dashboardElement = dashboardRef.current;
-    if (!dashboardElement) return;
-
+  const handleExportPDF = async (options: ExportOptions) => {
     toast({ title: "Exporting PDF...", description: "Please wait while we generate your PDF." });
 
     try {
         const { default: jsPDF } = await import("jspdf");
         const { default: html2canvas } = await import("html2canvas");
 
-        const canvas = await html2canvas(dashboardElement, {
-            scale: 2,
-            backgroundColor: "#0F172A",
-            useCORS: true,
-        });
-        const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
-            orientation: "landscape",
-            unit: "px",
-            format: [canvas.width, canvas.height],
+            orientation: options.orientation,
+            unit: 'px',
+            format: 'a4'
         });
-        pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        const chartElements = chartRefs.current.map(ref => ref.current).filter(el => el !== null) as HTMLElement[];
+
+        for(let i = 0; i < chartElements.length; i++) {
+            const chartElement = chartElements[i];
+            const canvas = await html2canvas(chartElement, { scale: 2, backgroundColor: "#0F172A", useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const aspectRatio = imgWidth / imgHeight;
+
+            let finalWidth, finalHeight, x, y;
+
+            if(options.chartsPerPage === 1) {
+                if (i > 0) pdf.addPage();
+                finalWidth = pdfWidth * 0.8;
+                finalHeight = finalWidth / aspectRatio;
+                if(finalHeight > pdfHeight * 0.8) {
+                    finalHeight = pdfHeight * 0.8;
+                    finalWidth = finalHeight * aspectRatio;
+                }
+                x = (pdfWidth - finalWidth) / 2;
+                y = (pdfHeight - finalHeight) / 2;
+                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+            } else { // 2 charts per page
+                if (i % 2 === 0) {
+                    if (i > 0) pdf.addPage();
+                    finalWidth = pdfWidth * 0.8;
+                    finalHeight = finalWidth / aspectRatio;
+                     if(finalHeight > pdfHeight * 0.4) {
+                        finalHeight = pdfHeight * 0.4;
+                        finalWidth = finalHeight * aspectRatio;
+                    }
+                    x = (pdfWidth - finalWidth) / 2;
+                    y = (pdfHeight / 2 - finalHeight) / 2; // Top half
+                } else {
+                     finalWidth = pdfWidth * 0.8;
+                    finalHeight = finalWidth / aspectRatio;
+                     if(finalHeight > pdfHeight * 0.4) {
+                        finalHeight = pdfHeight * 0.4;
+                        finalWidth = finalHeight * aspectRatio;
+                    }
+                    x = (pdfWidth - finalWidth) / 2;
+                    y = pdfHeight / 2 + (pdfHeight / 2 - finalHeight) / 2; // Bottom half
+                }
+                pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+            }
+        }
+
         pdf.save(`datasight-dashboard-${new Date().toISOString()}.pdf`);
     } catch(error) {
         console.error("Failed to export PDF", error);
@@ -187,10 +232,18 @@ export default function DashboardPage() {
     const value = Math.max(1, Math.min(data.length, Number(e.target.value)));
     setNumRows(value);
   }
+  
+  chartRefs.current = chartConfigs.map((_, i) => chartRefs.current[i] ?? createRef<HTMLDivElement>());
+
 
   return (
     <main className="p-4 sm:p-6 md:p-8">
-      <div ref={dashboardRef} className="space-y-6">
+       <ExportDialog 
+        isOpen={isExportDialogOpen} 
+        onClose={() => setIsExportDialogOpen(false)} 
+        onExport={handleExportPDF}
+      />
+      <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h1>
             <div className="flex items-center gap-2">
@@ -204,7 +257,7 @@ export default function DashboardPage() {
                   onChange={handleFileUpload}
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                 />
-                <Button onClick={handleExportPDF} disabled={data.length === 0}>
+                <Button onClick={() => setIsExportDialogOpen(true)} disabled={chartConfigs.length === 0}>
                     <Download className="mr-2 h-4 w-4" /> Export PDF
                 </Button>
             </div>
@@ -323,10 +376,10 @@ export default function DashboardPage() {
                         "grid-cols-1 md:grid-cols-2": layoutCols === 2,
                         "grid-cols-1 md:grid-cols-2 xl:grid-cols-3": layoutCols === 3,
                     })}>
-                        {chartConfigs.map((config) => (
+                        {chartConfigs.map((config, index) => (
                             <div key={config.id} className="flex flex-col gap-4">
                                 <ChartControls config={config} data={data} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView config={config} data={displayedData} />
+                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} />
                             </div>
                         ))}
                     </div>

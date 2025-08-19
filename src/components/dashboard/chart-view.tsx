@@ -3,6 +3,7 @@
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter
 } from "recharts";
+import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -65,7 +66,7 @@ const PieTooltip = ({ active, payload }: any) => {
     return null;
 };
 
-export function ChartView({ config, data }: ChartViewProps) {
+export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
   const renderChart = () => {
     if (!config.xAxis || !config.yAxis) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for the axes.</div>
@@ -224,7 +225,7 @@ export function ChartView({ config, data }: ChartViewProps) {
   }
 
   return (
-    <Card className="flex-1">
+    <Card className="flex-1" ref={ref}>
       <CardHeader>
         <CardTitle className="truncate text-lg font-semibold">{getChartTitle()}</CardTitle>
       </CardHeader>
@@ -233,4 +234,5 @@ export function ChartView({ config, data }: ChartViewProps) {
       </CardContent>
     </Card>
   );
-}
+});
+ChartView.displayName = 'ChartView';
