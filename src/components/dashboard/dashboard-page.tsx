@@ -417,7 +417,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <div ref={dataPreviewRef}>
+            <div ref={dataPreviewRef} className="overflow-x-auto">
               <Card>
                 <CardHeader>
                   <CardTitle className="font-headline">Data Preview</CardTitle>
@@ -433,9 +433,7 @@ export default function DashboardPage() {
                           <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
                       </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <DataTable data={displayedData} headers={headers} />
-                  </div>
+                  <DataTable data={displayedData} headers={headers} />
                 </CardContent>
               </Card>
             </div>
