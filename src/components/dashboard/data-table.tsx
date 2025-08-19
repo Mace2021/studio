@@ -21,7 +21,7 @@ export function DataTable({ data, headers }: DataTableProps) {
   }
 
   return (
-    <div className="w-full overflow-x-auto rounded-md border">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>

@@ -433,7 +433,9 @@ export default function DashboardPage() {
                           <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32"/>
                       </div>
                   </div>
-                  <DataTable data={displayedData} headers={headers} />
+                  <div className="overflow-x-auto">
+                    <DataTable data={displayedData} headers={headers} />
+                  </div>
                 </CardContent>
               </Card>
             </div>
