@@ -430,13 +430,13 @@ export default function DashboardPage() {
             </div>
         )}
         
-        <div ref={dataPreviewRef} className="overflow-x-auto">
+        <div ref={dataPreviewRef}>
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Data Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end overflow-x-auto">
                   <div className="grid gap-2">
                       <Label htmlFor="start-row">Start Row</Label>
                       <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32" disabled={data.length === 0}/>
