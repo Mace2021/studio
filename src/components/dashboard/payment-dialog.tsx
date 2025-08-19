@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,20 +23,58 @@ interface PaymentDialogProps {
   onPaymentSuccess: (type: 'onetime' | 'subscription') => void;
 }
 
+declare global {
+    interface Window {
+        paypal: any;
+    }
+}
+
 export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDialogProps) {
   const [selectedOption, setSelectedOption] = useState<'onetime' | 'subscription'>('onetime');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSdkReady, setIsSdkReady] = useState(false);
 
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsProcessing(false);
-    onPaymentSuccess(selectedOption);
-  };
+  useEffect(() => {
+    if (isOpen && selectedOption === 'subscription' && !window.paypal) {
+      const script = document.createElement('script');
+      script.src = "https://www.paypal.com/sdk/js?client-id=AY22j6KFLgw89u81LAPEkoK5eS0WNO6h3JSVBSrNiXCJ4NQYAOtGN8mMK6r6ejCkn6L3aiLqLPh9ra_d&vault=true&intent=subscription";
+      script.setAttribute('data-sdk-integration-source', 'button-factory');
+      script.onload = () => {
+        setIsSdkReady(true);
+      };
+      document.body.appendChild(script);
+    }
+  }, [isOpen, selectedOption]);
+
+  useEffect(() => {
+    if (isSdkReady && window.paypal) {
+        window.paypal.Buttons({
+            style: {
+                shape: 'rect',
+                color: 'gold',
+                layout: 'vertical',
+                label: 'subscribe'
+            },
+            createSubscription: function(data: any, actions: any) {
+              return actions.subscription.create({
+                plan_id: 'P-6WA10310SE254683XNCSO6II'
+              });
+            },
+            onApprove: function(data: any, actions: any) {
+              onPaymentSuccess('subscription');
+            }
+        }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+    }
+  }, [isSdkReady, onPaymentSuccess]);
+
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setIsSdkReady(false); // Reset SDK state on close
+      }
+      onClose();
+    }}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline">Unlock PDF Exports</DialogTitle>
@@ -86,24 +124,24 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
           <DialogClose asChild>
             <Button variant="outline" disabled={isProcessing}>Cancel</Button>
           </DialogClose>
-          {selectedOption === 'subscription' ? (
-              <Button onClick={handlePayment} disabled={isProcessing}>
-                {isProcessing ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                    </>
-                ) : (
-                    "Proceed to Payment"
-                )}
-              </Button>
-          ) : (
+          {selectedOption === 'onetime' ? (
              <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
                 <input type="hidden" name="cmd" value="_s-xclick" />
                 <input type="hidden" name="hosted_button_id" value="RQKFJNGUZ732E" />
                 <input type="hidden" name="currency_code" value="USD" />
                 <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_paynowCC_LG.gif" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now" />
             </form>
+          ) : (
+             <div>
+                {isSdkReady ? (
+                    <div id="paypal-button-container-P-6WA10310SE254683XNCSO6II"></div>
+                ) : (
+                    <Button disabled={true}>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                    </Button>
+                )}
+             </div>
           )}
         </DialogFooter>
       </DialogContent>
