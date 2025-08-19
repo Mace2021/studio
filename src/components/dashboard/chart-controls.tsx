@@ -17,6 +17,7 @@ const chartTypes: { value: ChartType; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "pie", label: "Pie Chart" },
+  { value: "scatter", label: "Scatter Plot" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -25,6 +26,22 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
   const handleConfigChange = (key: keyof ChartConfig, value: any) => {
     onUpdate({ ...config, [key]: value });
   };
+
+  const getXAxisLabel = () => {
+    switch (config.type) {
+        case "pie": return "Category (Name)";
+        case "scatter": return "X-Axis (Numeric)";
+        default: return "X-Axis";
+    }
+  }
+
+  const getYAxisLabel = () => {
+    switch (config.type) {
+        case "pie": return "Value";
+        case "scatter": return "Y-Axis (Numeric)";
+        default: return "Y-Axis (Value)";
+    }
+  }
 
   return (
     <div className="relative space-y-4 rounded-md border bg-background/50 p-4">
@@ -57,9 +74,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           </Select>
         </div>
         <div>
-          <Label htmlFor={`x-axis-${config.id}`}>
-            {config.type === "pie" ? "Category (Name)" : "X-Axis"}
-          </Label>
+          <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
           <Select
             value={config.xAxis}
             onValueChange={(value) => handleConfigChange("xAxis", value)}
@@ -78,9 +93,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           </Select>
         </div>
         <div>
-          <Label htmlFor={`y-axis-${config.id}`}>
-            {config.type === "pie" ? "Value" : "Y-Axis (Value)"}
-          </Label>
+          <Label htmlFor={`y-axis-${config.id}`}>{getYAxisLabel()}</Label>
           <Select
             value={config.yAxis}
             onValueChange={(value) => handleConfigChange("yAxis", value)}

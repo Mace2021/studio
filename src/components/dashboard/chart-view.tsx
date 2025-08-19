@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter
 } from "recharts";
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,21 +14,30 @@ interface ChartViewProps {
 const COLORS = ["#A78BFA", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#C4B5FD"];
 const PIE_CHART_LABEL_THRESHOLD = 5;
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-md border bg-background/90 p-2 shadow-sm">
-        <p className="font-bold">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={`item-${index}`} style={{ color: entry.color }} className="text-xs">
-            {`${entry.name}: ${Number(entry.value).toLocaleString()}`}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
+const CustomTooltip = ({ active, payload, label, config }: any) => {
+    if (active && payload && payload.length) {
+      if (config.type === 'scatter') {
+        const point = payload[0].payload;
+        return (
+            <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+                <p className="font-bold">{`${config.xAxis}: ${point.x.toLocaleString()}`}</p>
+                <p className="font-bold">{`${config.yAxis}: ${point.y.toLocaleString()}`}</p>
+            </div>
+        )
+      }
+      return (
+        <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+          <p className="font-bold">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} style={{ color: entry.color }} className="text-xs">
+              {`${entry.name}: ${Number(entry.value).toLocaleString()}`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
 const PieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -56,14 +65,6 @@ const PieTooltip = ({ active, payload }: any) => {
     return null;
 };
 
-const CustomizedDot = (props: any) => {
-    const { cx, cy, stroke, payload, value, index } = props;
-  
-    return (
-      <circle cx={cx} cy={cy} r={4} stroke={COLORS[index % COLORS.length]} strokeWidth={2} fill={COLORS[index % COLORS.length]} />
-    );
-  };
-
 export function ChartView({ config, data }: ChartViewProps) {
   const renderChart = () => {
     if (!config.xAxis || !config.yAxis) {
@@ -78,7 +79,7 @@ export function ChartView({ config, data }: ChartViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+              <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
               <Bar dataKey={config.yAxis} radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => (
@@ -95,9 +96,13 @@ export function ChartView({ config, data }: ChartViewProps) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
+              <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
-              <Line type="monotone" dataKey={config.yAxis} stroke="hsl(var(--primary))" strokeWidth={2} dot={<CustomizedDot />} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey={config.yAxis} strokeWidth={2} activeDot={{ r: 6 }}>
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         );
@@ -134,6 +139,34 @@ export function ChartView({ config, data }: ChartViewProps) {
               <Legend />
             </PieChart>
           </ResponsiveContainer>
+        );
+      case "scatter":
+        const scatterData = data
+          .map(row => ({
+            x: parseFloat(String(row[config.xAxis])),
+            y: parseFloat(String(row[config.yAxis])),
+          }))
+          .filter(point => !isNaN(point.x) && !isNaN(point.y));
+
+        if (scatterData.length === 0) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid numerical data for Scatter Plot.</div>
+        }
+
+        return (
+            <ResponsiveContainer width="100%" height={300}>
+                <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" dataKey="x" name={config.xAxis} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis type="number" dataKey="y" name={config.yAxis} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
+                    <Legend />
+                    <Scatter name={`${config.yAxis} by ${config.xAxis}`} data={scatterData} fill="#8884d8">
+                        {scatterData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Scatter>
+                </ScatterChart>
+            </ResponsiveContainer>
         );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
