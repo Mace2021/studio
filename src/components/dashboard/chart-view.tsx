@@ -16,9 +16,8 @@ const PIE_CHART_LABEL_THRESHOLD = 5;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
     // For scatter plot, the payload structure is different.
-    if (payload[0].dataKey) {
+    if (config.type === 'scatter' && payload.length === 2) {
         return (
              <div className="rounded-md border bg-background/90 p-2 shadow-sm">
                 <p className="font-bold">{`${payload[0].name}: ${Number(payload[0].value).toLocaleString()}`}</p>
