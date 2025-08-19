@@ -188,7 +188,7 @@ export default function DashboardPage() {
       xAxis: headers[0] || "",
       yAxis: headers[1] || headers[0] || "",
       stackBy: headers.length > 2 ? headers[2] : undefined,
-      value: headers.length > 2 ? headers[2] : headers.length > 1 ? headers[1] : headers[0],
+      value: headers.length > 2 ? headers[2] : (headers.length > 1 ? headers[1] : (headers[0] || "")),
     };
     setChartConfigs([...chartConfigs, newChart]);
   };
