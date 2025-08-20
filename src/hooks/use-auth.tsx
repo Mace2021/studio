@@ -1,7 +1,17 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signOut as firebaseSignOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User, 
+  signOut as firebaseSignOut, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  GithubAuthProvider
+} from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import { useRouter } from 'next/navigation';
 
@@ -12,9 +22,14 @@ interface AuthContextType {
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string) => Promise<any>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<any>;
+  signInWithGitHub: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const googleProvider = new GoogleAuthProvider();
+const githubProvider = new GithubAuthProvider();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -52,6 +67,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push('/login');
   };
 
+  const signInWithGoogle = () => {
+    return signInWithPopup(auth, googleProvider);
+  };
+
+  const signInWithGitHub = () => {
+    return signInWithPopup(auth, githubProvider);
+  };
+
+
   const value = {
     user,
     loading,
@@ -59,6 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signIn,
     signUp,
     signOut,
+    signInWithGoogle,
+    signInWithGitHub,
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
