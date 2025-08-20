@@ -1,9 +1,11 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Home, Info, Mail, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Home, Info, Mail, LogIn, LogOut, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import Image from "next/image";
 
 import {
   Sidebar,
@@ -14,7 +16,6 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Button } from "../ui/button";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
@@ -29,9 +30,8 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 p-2">
-          <BarChart3 className="h-7 w-7 text-primary" />
-          <h1 className="text-xl font-semibold font-headline">DataSight</h1>
+        <div className="flex items-center justify-center p-2">
+           <Image src="/logo.png" alt="Visual Dashboard Logo" width={150} height={50} />
         </div>
       </SidebarHeader>
       <SidebarContent>

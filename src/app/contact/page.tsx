@@ -17,7 +17,7 @@ interface Message {
 
 export default function ContactPage() {
     const [messages, setMessages] = useState<Message[]>([
-        { sender: 'bot', text: "Hello! I'm the DataSight support bot. How can I help you today?" }
+        { sender: 'bot', text: "Hello! I'm the Visual Dashboard support bot. How can I help you today?" }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
