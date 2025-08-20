@@ -3,6 +3,7 @@ import './globals.css';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
   title: 'DataSight Dashboard',
@@ -25,10 +26,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset className="main-background">{children}</SidebarInset>
-        </SidebarProvider>
+        <AuthProvider>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="main-background">{children}</SidebarInset>
+          </SidebarProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

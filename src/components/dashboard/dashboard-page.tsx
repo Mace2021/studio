@@ -22,6 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExportDialog, ExportOptions } from "./export-dialog";
 import { PaymentDialog } from "./payment-dialog";
 import { SuccessDialog } from "./success-dialog";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -40,6 +42,7 @@ export default function DashboardPage() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const { toast } = useToast();
+  const { user, isSubscribed } = useAuth(); // Assume isSubscribed is available from useAuth
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
@@ -105,6 +108,24 @@ export default function DashboardPage() {
     setIsSuccessDialogOpen(false);
     setIsExportDialogOpen(true);
   };
+
+  const handleExportClick = () => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Authentication Required",
+            description: "You need to be logged in to export.",
+            action: <Link href="/login"><Button variant="outline" size="sm">Login</Button></Link>
+        });
+        return;
+    }
+
+    if (isSubscribed) {
+        setIsExportDialogOpen(true);
+    } else {
+        setIsPaymentDialogOpen(true);
+    }
+  }
 
 
   const handleExportPDF = async (options: ExportOptions) => {
@@ -273,18 +294,14 @@ export default function DashboardPage() {
   
   const handleStartRowChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (isNaN(value)) {
-      setStartRow(0);
-    } else {
+    if (!isNaN(value)) {
       setStartRow(Math.max(0, Math.min(data.length - 1, value)));
     }
   }
 
   const handleNumRowsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (isNaN(value)) {
-      setNumRows(1);
-    } else {
+    if (!isNaN(value)) {
       setNumRows(Math.max(1, Math.min(data.length, value)));
     }
   }
@@ -324,7 +341,7 @@ export default function DashboardPage() {
                   onChange={handleFileUpload}
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                 />
-                <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={chartConfigs.length === 0}>
+                <Button onClick={handleExportClick} disabled={chartConfigs.length === 0}>
                     <Download className="mr-2 h-4 w-4" /> Export PDF
                 </Button>
             </div>
