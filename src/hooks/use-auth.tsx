@@ -18,12 +18,13 @@ import { useRouter } from 'next/navigation';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isSubscribed: boolean; // Add subscription status
+  isSubscribed: boolean; 
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string) => Promise<any>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<any>;
   signInWithGitHub: () => Promise<any>;
+  subscribeUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,17 +35,17 @@ const githubProvider = new GithubAuthProvider();
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubscribed, setIsSubscribed] = useState(false); // Mock subscription status
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      // In a real app, you would fetch subscription status from your database
-      // For now, we'll just mock it.
       if (user) {
-        // Let's pretend every user with 'test' in email is subscribed
-        setIsSubscribed(user.email?.includes('test') || false); 
+        // In a real app, you would fetch subscription status from your database.
+        // For this prototype, we'll check a value in localStorage.
+        const subscriptionStatus = localStorage.getItem(`subscribed_${user.uid}`);
+        setIsSubscribed(subscriptionStatus === 'true');
       } else {
         setIsSubscribed(false);
       }
@@ -75,6 +76,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithPopup(auth, githubProvider);
   };
 
+  const subscribeUser = () => {
+    if (user) {
+        // In a real app, you'd write this to your database.
+        // For this prototype, we'll use localStorage to persist the subscription.
+        localStorage.setItem(`subscribed_${user.uid}`, 'true');
+        setIsSubscribed(true);
+    }
+  }
+
 
   const value = {
     user,
@@ -85,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
     signInWithGoogle,
     signInWithGitHub,
+    subscribeUser,
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;

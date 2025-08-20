@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const { toast } = useToast();
-  const { user, isSubscribed } = useAuth(); // Assume isSubscribed is available from useAuth
+  const { user, isSubscribed, subscribeUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
@@ -99,6 +99,7 @@ export default function DashboardPage() {
     if (type === 'onetime') {
       setSuccessMessage("You've successfully made a one-time payment! You can now export your PDF.");
     } else {
+      subscribeUser();
       setSuccessMessage("You've successfully subscribed! You now have unlimited PDF exports.");
     }
     setIsSuccessDialogOpen(true);
