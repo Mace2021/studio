@@ -82,3 +82,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .main-background {
+    position: relative;
+    background-image: url('/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  .main-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.8);
+    z-index: 1;
+  }
+
+  .main-background > * {
+    position: relative;
+    z-index: 2;
+  }
+}
