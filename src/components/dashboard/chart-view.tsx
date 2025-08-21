@@ -122,6 +122,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
           </ResponsiveContainer>
         );
       case "pie":
+      case "doughnut":
         const pieDataMap = new Map<string, number>();
         data.forEach(row => {
             const name = row[config.xAxis] as string;
@@ -147,7 +148,16 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         return (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              <Pie 
+                data={pieData} 
+                dataKey="value" 
+                nameKey="name" 
+                cx="50%" 
+                cy="50%" 
+                innerRadius={config.type === 'doughnut' ? 60 : 0}
+                outerRadius={100} 
+                labelLine={false} 
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                 {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
               <Tooltip content={<PieTooltip />} />
@@ -301,7 +311,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   
   const getChartTitle = () => {
     if (!config.xAxis || !config.yAxis) return "Untitled Chart";
-    if (config.type === 'pie') {
+    if (config.type === 'pie' || config.type === 'doughnut') {
       return `Distribution of ${config.yAxis} by ${config.xAxis}`;
     }
      if ((config.type === 'stacked-bar' || config.type === 'grouped-bar') && config.stackBy) {
