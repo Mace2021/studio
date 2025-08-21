@@ -135,7 +135,7 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
                 <input type="hidden" name="hosted_button_id" value="RQKFJNGUZ732E" />
                 <input type="hidden" name="currency_code" value="USD" />
                 <Button type="submit" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now">
-                    Pay with PayPal
+                    Pay Now
                 </Button>
             </form>
           ) : (
