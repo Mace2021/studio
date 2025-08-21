@@ -10,7 +10,9 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
-  GithubAuthProvider
+  GithubAuthProvider,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import { useRouter } from 'next/navigation';
@@ -68,11 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push('/login');
   };
 
-  const signInWithGoogle = () => {
+  const signInWithGoogle = async () => {
+    await setPersistence(auth, browserLocalPersistence);
     return signInWithPopup(auth, googleProvider);
   };
 
-  const signInWithGitHub = () => {
+  const signInWithGitHub = async () => {
+    await setPersistence(auth, browserLocalPersistence);
     return signInWithPopup(auth, githubProvider);
   };
 
