@@ -35,7 +35,7 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   const [isSdkReady, setIsSdkReady] = useState(false);
 
   useEffect(() => {
-    if (isOpen && selectedOption === 'subscription' && !window.paypal) {
+    if (isOpen && !window.paypal) {
       const script = document.createElement('script');
       script.src = "https://www.paypal.com/sdk/js?client-id=AY22j6KFLgw89u81LAPEkoK5eS0WNO6h3JSVBSrNiXCJ4NQYAOtGN8mMK6r6ejCkn6L3aiLqLPh9ra_d&vault=true&intent=subscription";
       script.setAttribute('data-sdk-integration-source', 'button-factory');
@@ -43,11 +43,13 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
         setIsSdkReady(true);
       };
       document.body.appendChild(script);
+    } else if (isOpen && window.paypal) {
+      setIsSdkReady(true);
     }
-  }, [isOpen, selectedOption]);
+  }, [isOpen]);
 
   useEffect(() => {
-    if (isSdkReady && window.paypal) {
+    if (selectedOption === 'subscription' && isSdkReady && window.paypal) {
         const buttonContainer = document.querySelector('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
         if (buttonContainer && buttonContainer.childElementCount === 0) { // Check if button is already rendered
             window.paypal.Buttons({
@@ -68,15 +70,12 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
             }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
         }
     }
-  }, [isSdkReady, onPaymentSuccess]);
+  }, [selectedOption, isSdkReady, onPaymentSuccess]);
 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        // When closing the dialog, you might want to clean up.
-        // For example, if the SDK script was added, you could remove it.
-        // Also reset the SDK ready state.
         setIsSdkReady(false);
       }
       onClose();
@@ -135,7 +134,9 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
                 <input type="hidden" name="cmd" value="_s-xclick" />
                 <input type="hidden" name="hosted_button_id" value="RQKFJNGUZ732E" />
                 <input type="hidden" name="currency_code" value="USD" />
-                <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_paynowCC_LG.gif" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now" />
+                <Button type="submit" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now">
+                    Pay with PayPal
+                </Button>
             </form>
           ) : (
              <div>
