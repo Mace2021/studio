@@ -81,8 +81,8 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Select
             value={config.type}
             onValueChange={(value: ChartConfig['type']) => {
-                // When changing chart type, if it's not a line chart, ensure yAxis is not an array
-                const newYAxis = (value !== 'line' && Array.isArray(config.yAxis)) ? (config.yAxis[0] || '') : config.yAxis;
+                // When changing chart type, if it's not a line chart, ensure yAxis has only one value
+                const newYAxis = (value !== 'line' && Array.isArray(config.yAxis)) ? [config.yAxis[0] || ''] : config.yAxis;
                 onUpdate({ ...config, type: value, yAxis: newYAxis });
             }}
           >

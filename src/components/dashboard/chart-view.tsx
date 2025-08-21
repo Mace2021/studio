@@ -114,7 +114,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
-              {config.yAxis.map((yKey, index) => (
+              {Array.isArray(config.yAxis) && config.yAxis.map((yKey, index) => (
                 <Line 
                     key={yKey}
                     type="monotone" 
@@ -355,7 +355,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   const getChartTitle = () => {
     if (!config.xAxis || !config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
     
-    const yAxisTitle = config.yAxis.join(', ');
+    const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis.join(', ') : config.yAxis;
 
     if (config.type === 'pie' || config.type === 'doughnut') {
       return `Distribution of ${yAxisTitle} by ${config.xAxis}`;
