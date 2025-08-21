@@ -4,7 +4,7 @@ export interface ChartConfig {
   id: string;
   type: ChartType;
   xAxis: string;
-  yAxis: string;
+  yAxis: string[];
   stackBy?: string;
   value?: string; // For heatmap
 }

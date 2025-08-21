@@ -230,7 +230,7 @@ export default function DashboardPage() {
       id: `chart-${Date.now()}-${Math.random()}`,
       type: "bar",
       xAxis: headers[0] || "",
-      yAxis: headers[1] || headers[0] || "",
+      yAxis: headers[1] ? [headers[1]] : (headers[0] ? [headers[0]] : []),
       stackBy: headers.length > 2 ? headers[2] : undefined,
       value: headers.length > 2 ? headers[2] : (headers.length > 1 ? headers[1] : (headers[0] || "")),
     };
@@ -515,5 +515,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    

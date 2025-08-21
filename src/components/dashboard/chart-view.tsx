@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -24,7 +25,7 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
         return (
             <div className="rounded-md border bg-background/90 p-2 shadow-sm">
                 <p className="font-bold">{`${config.xAxis}: ${point.x.toLocaleString()}`}</p>
-                <p className="font-bold">{`${config.yAxis}: ${point.y.toLocaleString()}`}</p>
+                <p className="font-bold">{`${config.yAxis[0]}: ${point.y.toLocaleString()}`}</p>
             </div>
         )
       }
@@ -79,8 +80,10 @@ const PieTooltip = ({ active, payload }: any) => {
 };
 
 export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
+  const yAxisKey = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
+
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && (!config.xAxis || !config.yAxis)) || (config.type === 'heatmap' && (!config.xAxis || !config.yAxis || !config.value))) {
+    if ((config.type !== 'heatmap' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || (config.type === 'heatmap' && (!config.xAxis || !config.yAxis || !config.value))) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
@@ -94,7 +97,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
-              <Bar dataKey={config.yAxis} radius={[4, 4, 0, 0]}>
+              <Bar dataKey={yAxisKey} radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -111,13 +114,16 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
-              <Line type="monotone" dataKey={config.yAxis} stroke="#8884d8" strokeWidth={2} activeDot={{ r: 6 }} dot={(props) => {
-                const { cx, cy, index } = props;
-                return (
-                  <circle key={`dot-${index}`} cx={cx} cy={cy} r={4} fill={COLORS[index % COLORS.length]} />
-                );
-              }}>
-              </Line>
+              {config.yAxis.map((yKey, index) => (
+                <Line 
+                    key={yKey}
+                    type="monotone" 
+                    dataKey={yKey} 
+                    stroke={COLORS[index % COLORS.length]} 
+                    strokeWidth={2} 
+                    activeDot={{ r: 6 }}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         );
@@ -126,7 +132,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={data}>
                 <defs>
-                  <linearGradient id={`color-${config.yAxis}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`color-${yAxisKey}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.8}/>
                     <stop offset="95%" stopColor="#A78BFA" stopOpacity={0}/>
                   </linearGradient>
@@ -136,7 +142,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
                 <Legend />
-                <Area type="monotone" dataKey={config.yAxis} stroke="#8884d8" fillOpacity={1} fill={`url(#color-${config.yAxis})`} strokeWidth={2} />
+                <Area type="monotone" dataKey={yAxisKey} stroke="#8884d8" fillOpacity={1} fill={`url(#color-${yAxisKey})`} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           );
@@ -145,7 +151,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         const pieDataMap = new Map<string, number>();
         data.forEach(row => {
             const name = row[config.xAxis] as string;
-            const value = parseFloat(String(row[config.yAxis]));
+            const value = parseFloat(String(row[yAxisKey]));
             if (name && !isNaN(value)) {
                 pieDataMap.set(name, (pieDataMap.get(name) || 0) + value);
             }
@@ -188,7 +194,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         const scatterData = data
           .map(row => ({
             x: parseFloat(String(row[config.xAxis])),
-            y: parseFloat(String(row[config.yAxis])),
+            y: parseFloat(String(row[yAxisKey])),
           }))
           .filter(point => !isNaN(point.x) && !isNaN(point.y));
 
@@ -201,10 +207,10 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                 <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" dataKey="x" name={config.xAxis} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis type="number" dataKey="y" name={config.yAxis} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis type="number" dataKey="y" name={yAxisKey} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
                     <Legend />
-                    <Scatter name={`${config.yAxis} by ${config.xAxis}`} data={scatterData} fill="#8884d8">
+                    <Scatter name={`${yAxisKey} by ${config.xAxis}`} data={scatterData} fill="#8884d8">
                         {scatterData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -225,7 +231,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         data.forEach(row => {
           const xAxisKey = String(row[config.xAxis]);
           const groupKey = String(row[config.stackBy]);
-          const yAxisValue = parseFloat(String(row[config.yAxis]));
+          const yAxisValue = parseFloat(String(row[yAxisKey]));
 
           if (xAxisKey && groupKey && !isNaN(yAxisValue)) {
             if (!transformedData[xAxisKey]) {
@@ -275,7 +281,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a value column.</div>
         }
         const xLabels = [...new Set(data.map(row => row[config.xAxis]))].sort();
-        const yLabels = [...new Set(data.map(row => row[config.yAxis]))].sort();
+        const yLabels = [...new Set(data.map(row => row[yAxisKey]))].sort();
         const values = data.map(row => parseFloat(String(row[config.value]))).filter(v => !isNaN(v));
         const min = Math.min(...values);
         const max = Math.max(...values);
@@ -284,7 +290,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
 
         const heatmapData = yLabels.map(y => 
             xLabels.map(x => {
-                const point = data.find(row => row[config.xAxis] === x && row[config.yAxis] === y);
+                const point = data.find(row => row[config.xAxis] === x && row[yAxisKey] === y);
                 const value = point ? parseFloat(String(point[config.value])) : 0;
                 return { x, y, value };
             })
@@ -296,7 +302,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="category" dataKey="x" name={config.xAxis}
                         ticks={xLabels} stroke="hsl(var(--muted-foreground))" fontSize={12} angle={-45} textAnchor="end" height={60} />
-                    <YAxis type="category" dataKey="y" name={config.yAxis} 
+                    <YAxis type="category" dataKey="y" name={yAxisKey} 
                         ticks={yLabels} stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
                     <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
                     <Scatter data={heatmapData} shape="square">
@@ -310,7 +316,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
       case "pictogram":
         const pictogramData = data.map(row => ({
           name: String(row[config.xAxis]),
-          value: parseFloat(String(row[config.yAxis])),
+          value: parseFloat(String(row[yAxisKey])),
         })).filter(item => item.name && !isNaN(item.value));
 
         if (pictogramData.length === 0) {
@@ -347,17 +353,20 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   };
   
   const getChartTitle = () => {
-    if (!config.xAxis || !config.yAxis) return "Untitled Chart";
+    if (!config.xAxis || !config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
+    
+    const yAxisTitle = config.yAxis.join(', ');
+
     if (config.type === 'pie' || config.type === 'doughnut') {
-      return `Distribution of ${config.yAxis} by ${config.xAxis}`;
+      return `Distribution of ${yAxisTitle} by ${config.xAxis}`;
     }
      if ((config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && config.stackBy) {
-        return `${config.yAxis} by ${config.xAxis} (${config.type === 'stacked-bar' ? 'Stacked Bar' : config.type === 'grouped-bar' ? 'Cluster Bar' : 'Stacked Area'} by ${config.stackBy})`;
+        return `${yAxisTitle} by ${config.xAxis} (${config.type === 'stacked-bar' ? 'Stacked Bar' : config.type === 'grouped-bar' ? 'Cluster Bar' : 'Stacked Area'} by ${config.stackBy})`;
     }
     if (config.type === 'heatmap' && config.value) {
-        return `Heatmap of ${config.value} by ${config.xAxis} and ${config.yAxis}`;
+        return `Heatmap of ${config.value} by ${config.xAxis} and ${yAxisTitle}`;
     }
-    return `${config.yAxis} by ${config.xAxis}`;
+    return `${yAxisTitle} by ${config.xAxis}`;
   }
 
   return (

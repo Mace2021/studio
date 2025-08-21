@@ -107,4 +107,17 @@
     position: relative;
     z-index: 2;
   }
+  
+  .multi-select-custom .dropdown-container {
+    @apply bg-background border-input;
+  }
+  .multi-select-custom .dropdown-heading {
+    @apply text-foreground;
+  }
+  .multi-select-custom .item-renderer:hover {
+    @apply bg-accent text-accent-foreground;
+  }
+   .multi-select-custom .search-container input {
+    @apply bg-background text-foreground;
+  }
 }
