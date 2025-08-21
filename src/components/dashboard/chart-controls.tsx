@@ -17,11 +17,13 @@ interface ChartControlsProps {
 const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
   { value: "line", label: "Line Chart" },
+  { value: "area", label: "Area Chart" },
   { value: "pie", label: "Pie Chart" },
   { value: "doughnut", label: "Doughnut Chart" },
   { value: "scatter", label: "Scatter Plot" },
   { value: "stacked-bar", label: "Stacked Bar Chart" },
-  { value: "grouped-bar", label: "Grouped Bar Chart" },
+  { value: "stacked-area", label: "Stacked Area Chart" },
+  { value: "grouped-bar", label: "Cluster Bar Chart" },
   { value: "heatmap", label: "Heatmap" },
   { value: "pictogram", label: "Pictogram" },
 ];
@@ -123,7 +125,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        {(config.type === 'stacked-bar' || config.type === 'grouped-bar') && (
+        {(config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && (
           <div className="sm:col-span-2">
             <Label htmlFor={`stack-by-${config.id}`}>Group By (Category)</Label>
             <Select
@@ -169,5 +171,3 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     </div>
   );
 }
-
-    

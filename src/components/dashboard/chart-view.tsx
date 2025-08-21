@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart
 } from "recharts";
 import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
@@ -42,7 +42,7 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
         <div className="rounded-md border bg-background/90 p-2 shadow-sm">
           <p className="font-bold">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} style={{ color: entry.color }} className="text-xs">
+            <p key={`item-${index}`} style={{ color: entry.color || entry.stroke }} className="text-xs">
               {`${entry.name}: ${Number(entry.value).toLocaleString()}`}
             </p>
           ))}
@@ -121,6 +121,25 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             </LineChart>
           </ResponsiveContainer>
         );
+        case "area":
+          return (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id={`color-${config.yAxis}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#A78BFA" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
+                <Legend />
+                <Area type="monotone" dataKey={config.yAxis} stroke="#8884d8" fillOpacity={1} fill={`url(#color-${config.yAxis})`} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          );
       case "pie":
       case "doughnut":
         const pieDataMap = new Map<string, number>();
@@ -195,6 +214,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         );
       case "stacked-bar":
       case "grouped-bar":
+      case "stacked-area":
         if (!config.stackBy) {
           return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a column to "Group By".</div>
         }
@@ -218,6 +238,23 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         
         const chartData = Object.values(transformedData);
         const sortedGroupKeys = Array.from(groupKeys).sort();
+
+        if(config.type === 'stacked-area') {
+            return (
+                <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+                        <Legend />
+                        {sortedGroupKeys.map((key, index) => (
+                            <Area key={key} type="monotone" dataKey={key} stackId="a" stroke={COLORS[index % COLORS.length]} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </AreaChart>
+                </ResponsiveContainer>
+            )
+        }
 
         return (
           <ResponsiveContainer width="100%" height={300}>
@@ -314,8 +351,8 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     if (config.type === 'pie' || config.type === 'doughnut') {
       return `Distribution of ${config.yAxis} by ${config.xAxis}`;
     }
-     if ((config.type === 'stacked-bar' || config.type === 'grouped-bar') && config.stackBy) {
-        return `${config.yAxis} by ${config.xAxis} (${config.type === 'stacked-bar' ? 'Stacked' : 'Grouped'} by ${config.stackBy})`;
+     if ((config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && config.stackBy) {
+        return `${config.yAxis} by ${config.xAxis} (${config.type === 'stacked-bar' ? 'Stacked Bar' : config.type === 'grouped-bar' ? 'Cluster Bar' : 'Stacked Area'} by ${config.stackBy})`;
     }
     if (config.type === 'heatmap' && config.value) {
         return `Heatmap of ${config.value} by ${config.xAxis} and ${config.yAxis}`;
@@ -335,5 +372,3 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   );
 });
 ChartView.displayName = 'ChartView';
-
-    
