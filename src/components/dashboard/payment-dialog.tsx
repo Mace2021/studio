@@ -76,7 +76,8 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        setIsSdkReady(false);
+        // Only reset SDK readiness on close if it was a dialog initiated close
+        // This avoids issues with re-opening
       }
       onClose();
     }}>
