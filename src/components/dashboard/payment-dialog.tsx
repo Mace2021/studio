@@ -31,10 +31,12 @@ declare global {
 
 export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDialogProps) {
   const [selectedOption, setSelectedOption] = useState<'onetime' | 'subscription'>('onetime');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isSdkReady, setIsSdkReady] = useState(false);
 
   useEffect(() => {
+    // Ensure this runs only on the client
+    if (typeof window === 'undefined') return;
+
     if (isOpen && !window.paypal) {
       const script = document.createElement('script');
       script.src = "https://www.paypal.com/sdk/js?client-id=AY22j6KFLgw89u81LAPEkoK5eS0WNO6h3JSVBSrNiXCJ4NQYAOtGN8mMK6r6ejCkn6L3aiLqLPh9ra_d&vault=true&intent=subscription";
@@ -49,6 +51,9 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   }, [isOpen]);
 
   useEffect(() => {
+    // Ensure this runs only on the client
+    if (typeof window === 'undefined') return;
+    
     if (selectedOption === 'subscription' && isSdkReady && window.paypal) {
         const buttonContainer = document.querySelector('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
         if (buttonContainer && buttonContainer.childElementCount === 0) { // Check if button is already rendered
@@ -74,13 +79,7 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        // Only reset SDK readiness on close if it was a dialog initiated close
-        // This avoids issues with re-opening
-      }
-      onClose();
-    }}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline">Unlock PDF Exports</DialogTitle>
@@ -128,7 +127,7 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" disabled={isProcessing}>Cancel</Button>
+            <Button variant="outline">Cancel</Button>
           </DialogClose>
           {selectedOption === 'onetime' ? (
              <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
