@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth';
+import { Header } from '@/components/layout/header';
 
 export const metadata: Metadata = {
   title: 'Visual Dashboard',
@@ -30,7 +31,10 @@ export default function RootLayout({
         <AuthProvider>
           <SidebarProvider>
             <AppSidebar />
-            <SidebarInset className="main-background">{children}</SidebarInset>
+            <div className="flex flex-1 flex-col">
+              <Header />
+              <SidebarInset className="main-background">{children}</SidebarInset>
+            </div>
           </SidebarProvider>
         </AuthProvider>
         <Toaster />
