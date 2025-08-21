@@ -55,8 +55,11 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: 'google' | 'github') => {
     setIsSocialLoading(provider);
     try {
-        const loginMethod = provider === 'google' ? signInWithGoogle : signInWithGitHub;
-        await loginMethod();
+        if (provider === 'google') {
+            await signInWithGoogle();
+        } else {
+            await signInWithGitHub();
+        }
         router.push('/');
         toast({
             title: 'Login Successful',
