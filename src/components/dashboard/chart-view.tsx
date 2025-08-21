@@ -90,11 +90,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     switch (config.type) {
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data}>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={data} margin={{ bottom: 50 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
               <Bar dataKey={yAxisKey} radius={[4, 4, 0, 0]}>
@@ -107,11 +107,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         );
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={data} margin={{ bottom: 50 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
               <Legend />
               {Array.isArray(config.yAxis) && config.yAxis.map((yKey, index) => (
@@ -129,8 +129,8 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         );
         case "area":
           return (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={data}>
+            <ResponsiveContainer width="100%" height={350}>
+              <AreaChart data={data} margin={{ bottom: 50 }}>
                 <defs>
                   <linearGradient id={`color-${yAxisKey}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#A78BFA" stopOpacity={0.8}/>
@@ -138,8 +138,8 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
                 <Tooltip content={<CustomTooltip config={config} />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }} />
                 <Legend />
                 <Area type="monotone" dataKey={yAxisKey} stroke="#8884d8" fillOpacity={1} fill={`url(#color-${yAxisKey})`} strokeWidth={2} />
@@ -207,7 +207,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                 <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" dataKey="x" name={config.xAxis} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis type="number" dataKey="y" name={yAxisKey} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis type="number" dataKey="y" name={yAxisKey} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
                     <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
                     <Legend />
                     <Scatter name={`${yAxisKey} by ${config.xAxis}`} data={scatterData} fill="#8884d8">
@@ -247,11 +247,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
 
         if(config.type === 'stacked-area') {
             return (
-                <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={chartData}>
+                <ResponsiveContainer width="100%" height={350}>
+                    <AreaChart data={chartData} margin={{ bottom: 50 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+                        <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
                         <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
                         <Legend />
                         {sortedGroupKeys.map((key, index) => (
@@ -263,11 +263,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         }
 
         return (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} layout="horizontal">
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={chartData} layout="horizontal" margin={{ bottom: 50 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end"/>
+              <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
               <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
               <Legend />
               {sortedGroupKeys.map((key, index) => (
