@@ -39,7 +39,7 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
             </div>
           )
       }
-      if (config.type === 'treemap') {
+      if (config.type === 'treemap' && payload[0]?.payload?.root) {
           const item = payload[0].payload.root;
           return (
             <div className="rounded-md border bg-background/90 p-2 shadow-sm">
