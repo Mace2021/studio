@@ -27,6 +27,9 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "grouped-bar", label: "Cluster Bar Chart" },
   { value: "heatmap", label: "Heatmap" },
   { value: "pictogram", label: "Pictogram" },
+  { value: "funnel", label: "Funnel Chart" },
+  { value: "treemap", label: "Treemap" },
+  { value: "radar", label: "Radar Chart" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -45,9 +48,12 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     switch (config.type) {
         case "pie": return "Category (Name)";
         case "doughnut": return "Category (Name)";
+        case "funnel": return "Category (Name)";
+        case "treemap": return "Category (Name)";
         case "pictogram": return "Category";
         case "scatter": return "X-Axis (Numeric)";
         case "heatmap": return "X-Axis (Category)";
+        case "radar": return "Category";
         default: return "X-Axis";
     }
   }
@@ -56,13 +62,17 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     switch (config.type) {
         case "pie": return "Value";
         case "doughnut": return "Value";
+        case "funnel": return "Value";
         case "pictogram": return "Value (Numeric)";
         case "scatter": return "Y-Axis (Numeric)";
         case "heatmap": return "Y-Axis (Category)";
         case "line": return "Y-Axis (Value) - Select one or more";
+        case "radar": return "Value (Numeric)";
         default: return "Y-Axis (Value)";
     }
   }
+  
+  const isMultiYAxis = config.type === 'line' || config.type === 'radar';
 
   return (
     <div className="relative space-y-4 rounded-md border bg-background/50 p-4">
@@ -81,8 +91,8 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Select
             value={config.type}
             onValueChange={(value: ChartConfig['type']) => {
-                // When changing chart type, if it's not a line chart, ensure yAxis has only one value
-                const newYAxis = (value !== 'line' && Array.isArray(config.yAxis)) ? [config.yAxis[0] || ''] : config.yAxis;
+                // When changing chart type, if it's not a multi-y-axis chart, ensure yAxis has only one value
+                const newYAxis = (!isMultiYAxis && Array.isArray(config.yAxis)) ? [config.yAxis[0] || ''] : config.yAxis;
                 onUpdate({ ...config, type: value, yAxis: newYAxis });
             }}
           >
@@ -117,9 +127,9 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        <div className={config.type === 'line' ? 'sm:col-span-2' : ''}>
+        <div className={isMultiYAxis ? 'sm:col-span-2' : ''}>
           <Label htmlFor={`y-axis-${config.id}`}>{getYAxisLabel()}</Label>
-          {config.type === 'line' ? (
+          {isMultiYAxis ? (
              <MultiSelect
                 options={headerOptions}
                 value={Array.isArray(config.yAxis) ? config.yAxis.map(y => ({label: y, value: y})) : []}
@@ -171,7 +181,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </Select>
           </div>
         )}
-         {config.type === 'heatmap' && (
+         {(config.type === 'heatmap' || config.type === 'treemap') && (
           <div className="sm:col-span-2">
             <Label htmlFor={`value-${config.id}`}>Value (Numeric)</Label>
             <Select

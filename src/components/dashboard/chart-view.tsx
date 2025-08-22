@@ -2,7 +2,7 @@
 "use client";
 
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
@@ -25,7 +25,7 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
         return (
             <div className="rounded-md border bg-background/90 p-2 shadow-sm">
                 <p className="font-bold">{`${config.xAxis}: ${point.x.toLocaleString()}`}</p>
-                <p className="font-bold">{`${config.yAxis[0]}: ${point.y.toLocaleString()}`}</p>
+                <p className="font-bold">{`${Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis}: ${point.y.toLocaleString()}`}</p>
             </div>
         )
       }
@@ -36,6 +36,15 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
                 <p className="font-bold">{item.y}</p>
                 <p className="text-sm">{config.xAxis}: {item.x}</p>
                 <p className="text-sm">{config.value}: {item.value}</p>
+            </div>
+          )
+      }
+      if (config.type === 'treemap') {
+          const item = payload[0].payload.root;
+          return (
+            <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+                <p className="font-bold">{item.name}</p>
+                <p className="text-sm">{config.value}: {item.size.toLocaleString()}</p>
             </div>
           )
       }
@@ -79,11 +88,38 @@ const PieTooltip = ({ active, payload }: any) => {
     return null;
 };
 
+// A simple content renderer for the treemap
+const TreemapContent = (props: any) => {
+    const { root, depth, x, y, width, height, index, colors, name } = props;
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: colors[Math.floor(index % colors.length)],
+            stroke: '#fff',
+            strokeWidth: 2 / (depth + 1e-10),
+            strokeOpacity: 1 / (depth + 1e-10),
+          }}
+        />
+        {width > 80 && height > 25 ? (
+          <text x={x + width / 2} y={y + height / 2 + 7} textAnchor="middle" fill="#fff" fontSize={14}>
+            {name}
+          </text>
+        ) : null}
+      </g>
+    );
+};
+
+
 export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
   const yAxisKey = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
 
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || (config.type === 'heatmap' && (!config.xAxis || !config.yAxis || !config.value))) {
+    if ((config.type !== 'heatmap' && config.type !== 'treemap' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value))) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
@@ -347,6 +383,79 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               </div>
           </div>
         );
+      case 'funnel':
+        const funnelData = data.map(row => ({
+            name: String(row[config.xAxis]),
+            value: parseFloat(String(row[yAxisKey])),
+            fill: COLORS[Math.floor(Math.random() * COLORS.length)]
+        })).filter(item => item.name && !isNaN(item.value))
+           .sort((a,b) => b.value - a.value);
+
+        if (funnelData.length === 0) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid data for Funnel Chart.</div>;
+        }
+
+        return (
+            <ResponsiveContainer width="100%" height={300}>
+                <FunnelChart>
+                    <Tooltip content={<CustomTooltip config={config} />} />
+                    <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                        {funnelData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                    </Funnel>
+                    <Legend />
+                </FunnelChart>
+            </ResponsiveContainer>
+        );
+       case 'treemap':
+        if (!config.value) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a value column.</div>
+        }
+        const treemapData = data.map(row => ({
+            name: String(row[config.xAxis]),
+            size: parseFloat(String(row[config.value])),
+        })).filter(item => item.name && !isNaN(item.size));
+
+        if (treemapData.length === 0) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid data for Treemap.</div>;
+        }
+        return (
+            <ResponsiveContainer width="100%" height={300}>
+                <Treemap
+                    data={treemapData}
+                    dataKey="size"
+                    ratio={4 / 3}
+                    stroke="#fff"
+                    fill="#8884d8"
+                    content={<TreemapContent colors={COLORS} />}
+                >
+                    <Tooltip content={<CustomTooltip config={config} />} />
+                </Treemap>
+            </ResponsiveContainer>
+        );
+       case 'radar':
+        return (
+            <ResponsiveContainer width="100%" height={300}>
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey={config.xAxis} />
+                    <PolarRadiusAxis />
+                    <Tooltip content={<CustomTooltip config={config} />} />
+                    <Legend />
+                    {Array.isArray(config.yAxis) && config.yAxis.map((yKey, index) => (
+                        <Radar
+                            key={yKey}
+                            name={yKey}
+                            dataKey={yKey}
+                            stroke={COLORS[index % COLORS.length]}
+                            fill={COLORS[index % COLORS.length]}
+                            fillOpacity={0.6}
+                        />
+                    ))}
+                </RadarChart>
+            </ResponsiveContainer>
+        );
       default:
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Select a chart type.</div>;
     }
@@ -365,6 +474,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     }
     if (config.type === 'heatmap' && config.value) {
         return `Heatmap of ${config.value} by ${config.xAxis} and ${yAxisTitle}`;
+    }
+    if (config.type === 'treemap' && config.value) {
+        return `Treemap of ${config.xAxis} by ${config.value}`;
     }
     return `${yAxisTitle} by ${config.xAxis}`;
   }
