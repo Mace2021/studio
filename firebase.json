@@ -25,13 +25,11 @@
     }
   ],
   "hosting": {
-  
-  "appAssociation": "AUTO",
-  "rewrites": [
-    {
-      "source": "/**",
-      "dynamicLinks": true
-    }
-  ]
-}
+    "rewrites": [
+      {
+        "source": "/**",
+        "appHosting": "studio"
+      }
+    ]
+  }
 }
