@@ -4,11 +4,13 @@
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
-import React from 'react';
+import React, { useState } from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { scaleLinear } from 'd3-scale';
-import { User } from "lucide-react";
+import { User, ChevronLeft, ChevronRight } from "lucide-react";
+import { DataTable } from "./data-table";
+import { Button } from "@/components/ui/button";
 
 interface ChartViewProps {
   config: ChartConfig;
@@ -17,6 +19,7 @@ interface ChartViewProps {
 
 const COLORS = ["#A78BFA", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#C4B5FD"];
 const PIE_CHART_LABEL_THRESHOLD = 5;
+const ROWS_PER_PAGE = 10;
 
 const CustomTooltip = ({ active, payload, label, config }: any) => {
     if (active && payload && payload.length) {
@@ -117,13 +120,45 @@ const TreemapContent = (props: any) => {
 
 export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
   const yAxisKey = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
+  const [currentPage, setCurrentPage] = useState(0);
 
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && config.type !== 'treemap' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value))) {
+    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value))) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
     switch (config.type) {
+      case "paginated-report":
+        const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
+        const startIndex = currentPage * ROWS_PER_PAGE;
+        const paginatedData = data.slice(startIndex, startIndex + ROWS_PER_PAGE);
+
+        return (
+          <div>
+            <DataTable data={paginatedData} headers={data.length > 0 ? Object.keys(data[0]) : []} className="overflow-x-auto h-[350px]" />
+            <div className="flex items-center justify-end space-x-2 py-4">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage === totalPages - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
       case "bar":
         return (
           <ResponsiveContainer width="100%" height={350}>
@@ -479,6 +514,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   };
   
   const getChartTitle = () => {
+    if (config.type === 'paginated-report') {
+      return "Paginated Report";
+    }
     if (!config.xAxis || !config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
     
     const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis.join(', ') : config.yAxis;

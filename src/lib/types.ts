@@ -1,4 +1,4 @@
-export type ChartType = "bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar" | "pictogram" | "area" | "stacked-area" | "funnel" | "treemap" | "radar" | "horizontal-bar";
+export type ChartType = "bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar" | "pictogram" | "area" | "stacked-area" | "funnel" | "treemap" | "radar" | "horizontal-bar" | "paginated-report";
 
 export interface ChartConfig {
   id: string;

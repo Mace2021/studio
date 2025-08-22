@@ -31,6 +31,7 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "funnel", label: "Funnel Chart" },
   { value: "treemap", label: "Treemap" },
   { value: "radar", label: "Radar Chart" },
+  { value: "paginated-report", label: "Paginated Report" },
 ];
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
@@ -111,100 +112,102 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
-          <Select
-            value={config.xAxis}
-            onValueChange={(value) => handleConfigChange("xAxis", value)}
-            disabled={headers.length === 0}
-          >
-            <SelectTrigger id={`x-axis-${config.id}`}>
-              <SelectValue placeholder="Select column" />
-            </SelectTrigger>
-            <SelectContent>
-              {headers.map((header) => (
-                <SelectItem key={header} value={header}>
-                  {header}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className={isMultiYAxis ? 'sm:col-span-2' : ''}>
-          <Label htmlFor={`y-axis-${config.id}`}>{getYAxisLabel()}</Label>
-          {isMultiYAxis ? (
-             <MultiSelect
-                options={headerOptions}
-                value={Array.isArray(config.yAxis) ? config.yAxis.map(y => ({label: y, value: y})) : []}
-                onChange={handleMultiSelectChange}
-                labelledBy="Select"
-                hasSelectAll={false}
-                overrideStrings={{
-                    "selectSomeItems": "Select Y-Axis columns..."
-                }}
-                className="multi-select-custom"
-            />
-          ) : (
+        { config.type !== 'paginated-report' && <>
+          <div>
+            <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
             <Select
-                value={Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis}
-                onValueChange={(value) => handleConfigChange("yAxis", [value])}
-                disabled={headers.length === 0}
+              value={config.xAxis}
+              onValueChange={(value) => handleConfigChange("xAxis", value)}
+              disabled={headers.length === 0}
             >
-                <SelectTrigger id={`y-axis-${config.id}`}>
+              <SelectTrigger id={`x-axis-${config.id}`}>
                 <SelectValue placeholder="Select column" />
+              </SelectTrigger>
+              <SelectContent>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className={isMultiYAxis ? 'sm:col-span-2' : ''}>
+            <Label htmlFor={`y-axis-${config.id}`}>{getYAxisLabel()}</Label>
+            {isMultiYAxis ? (
+              <MultiSelect
+                  options={headerOptions}
+                  value={Array.isArray(config.yAxis) ? config.yAxis.map(y => ({label: y, value: y})) : []}
+                  onChange={handleMultiSelectChange}
+                  labelledBy="Select"
+                  hasSelectAll={false}
+                  overrideStrings={{
+                      "selectSomeItems": "Select Y-Axis columns..."
+                  }}
+                  className="multi-select-custom"
+              />
+            ) : (
+              <Select
+                  value={Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis}
+                  onValueChange={(value) => handleConfigChange("yAxis", [value])}
+                  disabled={headers.length === 0}
+              >
+                  <SelectTrigger id={`y-axis-${config.id}`}>
+                  <SelectValue placeholder="Select column" />
+                  </SelectTrigger>
+                  <SelectContent>
+                  {headers.map((header) => (
+                      <SelectItem key={header} value={header}>
+                      {header}
+                      </SelectItem>
+                  ))}
+                  </SelectContent>
+              </Select>
+            )}
+          </div>
+          {(config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && (
+            <div className="sm:col-span-2">
+              <Label htmlFor={`stack-by-${config.id}`}>Group By (Category)</Label>
+              <Select
+                value={config.stackBy}
+                onValueChange={(value) => handleConfigChange("stackBy", value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id={`stack-by-${config.id}`}>
+                  <SelectValue placeholder="Select column" />
                 </SelectTrigger>
                 <SelectContent>
-                {headers.map((header) => (
+                  {headers.map((header) => (
                     <SelectItem key={header} value={header}>
-                    {header}
+                      {header}
                     </SelectItem>
-                ))}
+                  ))}
                 </SelectContent>
-            </Select>
+              </Select>
+            </div>
           )}
-        </div>
-        {(config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && (
-          <div className="sm:col-span-2">
-            <Label htmlFor={`stack-by-${config.id}`}>Group By (Category)</Label>
-            <Select
-              value={config.stackBy}
-              onValueChange={(value) => handleConfigChange("stackBy", value)}
-              disabled={headers.length === 0}
-            >
-              <SelectTrigger id={`stack-by-${config.id}`}>
-                <SelectValue placeholder="Select column" />
-              </SelectTrigger>
-              <SelectContent>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-         {(config.type === 'heatmap' || config.type === 'treemap') && (
-          <div className="sm:col-span-2">
-            <Label htmlFor={`value-${config.id}`}>Value (Numeric)</Label>
-            <Select
-              value={config.value}
-              onValueChange={(value) => handleConfigChange("value", value)}
-              disabled={headers.length === 0}
-            >
-              <SelectTrigger id={`value-${config.id}`}>
-                <SelectValue placeholder="Select column" />
-              </SelectTrigger>
-              <SelectContent>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+          {(config.type === 'heatmap' || config.type === 'treemap') && (
+            <div className="sm:col-span-2">
+              <Label htmlFor={`value-${config.id}`}>Value (Numeric)</Label>
+              <Select
+                value={config.value}
+                onValueChange={(value) => handleConfigChange("value", value)}
+                disabled={headers.length === 0}
+              >
+                <SelectTrigger id={`value-${config.id}`}>
+                  <SelectValue placeholder="Select column" />
+                </SelectTrigger>
+                <SelectContent>
+                  {headers.map((header) => (
+                    <SelectItem key={header} value={header}>
+                      {header}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </>}
       </div>
     </div>
   );
