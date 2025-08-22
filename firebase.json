@@ -23,5 +23,15 @@
       ],
       "alwaysDeployFromSource": true
     }
+  ],
+  "hosting": {
+  
+  "appAssociation": "AUTO",
+  "rewrites": [
+    {
+      "source": "/**",
+      "dynamicLinks": true
+    }
   ]
+}
 }
