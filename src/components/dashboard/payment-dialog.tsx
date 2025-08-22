@@ -34,7 +34,6 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   const [isSdkReady, setIsSdkReady] = useState(false);
 
   useEffect(() => {
-    // This effect should only run on the client side.
     if (typeof window === 'undefined') return;
 
     if (isOpen && !window.paypal) {
@@ -45,41 +44,59 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
         setIsSdkReady(true);
       };
       document.body.appendChild(script);
+
+      return () => {
+        // Clean up the script when the component unmounts or dialog closes
+        const existingScript = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
+        if (existingScript) {
+            document.body.removeChild(existingScript);
+        }
+      }
+
     } else if (window.paypal) {
       setIsSdkReady(true);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    // This effect should only run on the client side.
-    if (typeof window === 'undefined' || !isSdkReady || !window.paypal) return;
+    if (typeof window === 'undefined' || !isSdkReady || !window.paypal || !isOpen) return;
     
     if (selectedOption === 'subscription') {
         const buttonContainer = document.querySelector('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
-        // Only render the button if the container exists and is empty.
-        if (buttonContainer && buttonContainer.childElementCount === 0) { 
-            window.paypal.Buttons({
-                style: {
-                    shape: 'rect',
-                    color: 'gold',
-                    layout: 'vertical',
-                    label: 'subscribe'
-                },
-                createSubscription: function(data: any, actions: any) {
-                  return actions.subscription.create({
-                    plan_id: 'P-6WA10310SE254683XNCSO6II'
-                  });
-                },
-                onApprove: function(data: any, actions: any) {
-                  onPaymentSuccess('subscription');
-                },
-                onError: function(err: any) {
-                    console.error("PayPal button error:", err);
-                }
-            }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+        
+        // Clear the container before rendering new buttons
+        if (buttonContainer) {
+            buttonContainer.innerHTML = '';
+        }
+
+        // Only render the button if the container exists.
+        if (buttonContainer) { 
+            try {
+                window.paypal.Buttons({
+                    style: {
+                        shape: 'rect',
+                        color: 'gold',
+                        layout: 'vertical',
+                        label: 'subscribe'
+                    },
+                    createSubscription: function(data: any, actions: any) {
+                      return actions.subscription.create({
+                        plan_id: 'P-6WA10310SE254683XNCSO6II'
+                      });
+                    },
+                    onApprove: function(data: any, actions: any) {
+                      onPaymentSuccess('subscription');
+                    },
+                    onError: function(err: any) {
+                        console.error("PayPal button error:", err);
+                    }
+                }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
+            } catch (error) {
+                console.error("Error rendering PayPal button:", error);
+            }
         }
     }
-  }, [selectedOption, isSdkReady, onPaymentSuccess]);
+  }, [selectedOption, isSdkReady, onPaymentSuccess, isOpen]);
 
 
   return (
