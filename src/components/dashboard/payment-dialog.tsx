@@ -34,7 +34,7 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
   const [isSdkReady, setIsSdkReady] = useState(false);
 
   useEffect(() => {
-    // Ensure this runs only on the client
+    // This effect should only run on the client side.
     if (typeof window === 'undefined') return;
 
     if (isOpen && !window.paypal) {
@@ -45,18 +45,19 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
         setIsSdkReady(true);
       };
       document.body.appendChild(script);
-    } else if (isOpen && window.paypal) {
+    } else if (window.paypal) {
       setIsSdkReady(true);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    // Ensure this runs only on the client
-    if (typeof window === 'undefined') return;
+    // This effect should only run on the client side.
+    if (typeof window === 'undefined' || !isSdkReady || !window.paypal) return;
     
-    if (selectedOption === 'subscription' && isSdkReady && window.paypal) {
+    if (selectedOption === 'subscription') {
         const buttonContainer = document.querySelector('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
-        if (buttonContainer && buttonContainer.childElementCount === 0) { // Check if button is already rendered
+        // Only render the button if the container exists and is empty.
+        if (buttonContainer && buttonContainer.childElementCount === 0) { 
             window.paypal.Buttons({
                 style: {
                     shape: 'rect',
@@ -71,6 +72,9 @@ export function PaymentDialog({ isOpen, onClose, onPaymentSuccess }: PaymentDial
                 },
                 onApprove: function(data: any, actions: any) {
                   onPaymentSuccess('subscription');
+                },
+                onError: function(err: any) {
+                    console.error("PayPal button error:", err);
                 }
             }).render('#paypal-button-container-P-6WA10310SE254683XNCSO6II');
         }
