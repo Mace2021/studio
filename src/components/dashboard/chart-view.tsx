@@ -412,7 +412,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         }
 
         const maxVal = Math.max(...pictogramData.map(d => d.value));
-        const valuePerIcon = Math.ceil(maxVal / 20); // Aim for a max of 20 icons
+        const valuePerIcon = Math.ceil(Math.round(maxVal / 20)); // Aim for a max of 20 icons
 
         return (
           <div className="space-y-4 pt-4">
@@ -439,7 +439,6 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         const funnelData = data.map(row => ({
             name: String(row[config.xAxis]),
             value: parseFloat(String(row[yAxisKey])),
-            fill: COLORS[Math.floor(Math.random() * COLORS.length)]
         })).filter(item => item.name && !isNaN(item.value))
            .sort((a,b) => b.value - a.value);
 
