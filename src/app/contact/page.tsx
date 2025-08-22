@@ -61,11 +61,11 @@ export default function ContactPage() {
                         </div>
                         <div className="flex items-center gap-4">
                             <Phone className="h-5 w-5 text-primary" />
-                            <span>+1 (555) 123-4567</span>
+                            <span>+1 (520) 314-7933</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <MapPin className="h-5 w-5 text-primary" />
-                            <span>123 Data Drive, Visualization City, DC 54321</span>
+                            <span>Tucson, Arizona 85746</span>
                         </div>
                     </CardContent>
                 </Card>
