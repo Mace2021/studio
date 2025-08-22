@@ -141,6 +141,23 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             </BarChart>
           </ResponsiveContainer>
         );
+      case "horizontal-bar":
+        return (
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} interval={0}/>
+              <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+              <Legend />
+              <Bar dataKey={yAxisKey} layout="vertical" radius={[0, 4, 4, 0]}>
+                 {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
       case "line":
         return (
           <ResponsiveContainer width="100%" height={350}>

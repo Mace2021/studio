@@ -17,6 +17,7 @@ interface ChartControlsProps {
 
 const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
+  { value: "horizontal-bar", label: "Horizontal Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "area", label: "Area Chart" },
   { value: "pie", label: "Pie Chart" },
@@ -54,6 +55,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "scatter": return "X-Axis (Numeric)";
         case "heatmap": return "X-Axis (Category)";
         case "radar": return "Category";
+        case "horizontal-bar": return "Category (Y-Axis)";
         default: return "X-Axis";
     }
   }
@@ -68,6 +70,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "heatmap": return "Y-Axis (Category)";
         case "line": return "Y-Axis (Value) - Select one or more";
         case "radar": return "Value (Numeric)";
+        case "horizontal-bar": return "Value (X-Axis)";
         default: return "Y-Axis (Value)";
     }
   }
