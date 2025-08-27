@@ -3,7 +3,7 @@
 
 import { useState, useRef, createRef, RefObject } from "react";
 import * as xlsx from "xlsx";
-import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles } from "lucide-react";
+import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles, Pencil } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
 import { askQuestion } from "@/ai/flows/ask-question-flow";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
+  const [comments, setComments] = useState("");
   const [startRow, setStartRow] = useState(0);
   const [numRows, setNumRows] = useState(20);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -476,6 +477,23 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2 font-headline">
+                      <Pencil className="h-6 w-6" />
+                      Comments & Reviews
+                  </CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <Textarea 
+                      placeholder="Add your notes, comments, or reviews here..."
+                      value={comments}
+                      onChange={(e) => setComments(e.target.value)}
+                      rows={6}
+                  />
+              </CardContent>
+            </Card>
           </>
         ) : (
             <div className="flex h-[60vh] flex-col items-center justify-center rounded-md border-2 border-dashed text-center p-4">
@@ -515,5 +533,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    
