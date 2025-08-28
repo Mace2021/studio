@@ -4,7 +4,7 @@
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { scaleLinear } from 'd3-scale';
@@ -134,13 +134,52 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
           onDataPointClick(config.xAxis, payload.name);
       }
   }
+  
+  const kpiValue = useMemo(() => {
+    if (config.type !== 'kpi' || !yAxisKey || data.length === 0) return null;
+
+    const values = data.map(row => parseFloat(String(row[yAxisKey]))).filter(v => !isNaN(v));
+    if (values.length === 0 && config.aggregation !== 'count') return null;
+
+    switch (config.aggregation) {
+        case 'sum':
+            return values.reduce((acc, v) => acc + v, 0);
+        case 'average':
+            return values.reduce((acc, v) => acc + v, 0) / values.length;
+        case 'count':
+            return data.length; // Count all rows if aggregation is count
+        case 'min':
+            return Math.min(...values);
+        case 'max':
+            return Math.max(...values);
+        default:
+            return null;
+    }
+  }, [config, data, yAxisKey]);
+
 
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value))) {
+    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && config.type !== 'kpi' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value)) || (config.type === 'kpi' && (!config.yAxis || !config.aggregation))) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
     switch (config.type) {
+      case "kpi":
+        if (kpiValue === null) {
+            return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a metric and aggregation.</div>
+        }
+         const formattedValue = kpiValue.toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 0
+        });
+
+        return (
+            <div className="flex h-[300px] flex-col items-center justify-center">
+                <div className="text-6xl font-bold text-primary">
+                    {config.prefix}{formattedValue}{config.suffix}
+                </div>
+            </div>
+        )
       case "paginated-report":
         const totalPages = Math.ceil(data.length / ROWS_PER_PAGE);
         const startIndex = currentPage * ROWS_PER_PAGE;
@@ -534,6 +573,12 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   const getChartTitle = () => {
     if (config.type === 'paginated-report') {
       return "Paginated Report";
+    }
+    if (config.type === 'kpi') {
+        const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
+        const aggregationTitle = config.aggregation ? config.aggregation.charAt(0).toUpperCase() + config.aggregation.slice(1) : '';
+        if (!yAxisTitle || !aggregationTitle) return "KPI";
+        return `${aggregationTitle} of ${yAxisTitle}`;
     }
     if (!config.xAxis || !config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
     

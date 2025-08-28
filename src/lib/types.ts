@@ -1,4 +1,7 @@
-export type ChartType = "bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar" | "pictogram" | "area" | "stacked-area" | "funnel" | "treemap" | "radar" | "horizontal-bar" | "paginated-report";
+
+export type ChartType = "bar" | "line" | "pie" | "doughnut" | "scatter" | "stacked-bar" | "heatmap" | "grouped-bar" | "pictogram" | "area" | "stacked-area" | "funnel" | "treemap" | "radar" | "horizontal-bar" | "paginated-report" | "kpi";
+
+export type AggregationType = 'sum' | 'average' | 'count' | 'min' | 'max';
 
 export interface ChartConfig {
   id: string;
@@ -7,6 +10,9 @@ export interface ChartConfig {
   yAxis: string[];
   stackBy?: string;
   value?: string; // For heatmap, treemap
+  aggregation?: AggregationType;
+  prefix?: string;
+  suffix?: string;
 }
 
 export type DataRow = Record<string, string | number>;

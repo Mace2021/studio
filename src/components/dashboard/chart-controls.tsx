@@ -2,11 +2,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ChartConfig, DataRow } from "@/lib/types";
+import type { AggregationType, ChartConfig, DataRow } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "react-multi-select-component";
+import { Input } from "../ui/input";
 
 interface ChartControlsProps {
   config: ChartConfig;
@@ -32,7 +33,16 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "treemap", label: "Treemap" },
   { value: "radar", label: "Radar Chart" },
   { value: "paginated-report", label: "Paginated Report" },
+  { value: "kpi", label: "KPI Card" },
 ];
+
+const aggregationTypes: { value: AggregationType; label: string }[] = [
+    { value: 'sum', label: 'Sum' },
+    { value: 'average', label: 'Average' },
+    { value: 'count', label: 'Count' },
+    { value: 'min', label: 'Minimum' },
+    { value: 'max', label: 'Maximum' },
+]
 
 export function ChartControls({ config, data, onUpdate, onRemove }: ChartControlsProps) {
   const headers = data.length > 0 ? Object.keys(data[0]) : [];
@@ -72,6 +82,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "line": return "Y-Axis (Value) - Select one or more";
         case "radar": return "Value (Numeric)";
         case "horizontal-bar": return "Value (X-Axis)";
+        case "kpi": return "Metric (Numeric)";
         default: return "Y-Axis (Value)";
     }
   }
@@ -112,7 +123,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        { config.type !== 'paginated-report' && <>
+        { config.type !== 'paginated-report' && config.type !== 'kpi' && <>
           <div>
             <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
             <Select
@@ -208,6 +219,55 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </div>
           )}
         </>}
+        {config.type === 'kpi' && (
+            <>
+                <div>
+                    <Label htmlFor={`y-axis-${config.id}`}>{getYAxisLabel()}</Label>
+                     <Select
+                        value={Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis}
+                        onValueChange={(value) => handleConfigChange("yAxis", [value])}
+                        disabled={headers.length === 0}
+                    >
+                        <SelectTrigger id={`y-axis-${config.id}`}>
+                            <SelectValue placeholder="Select column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {headers.map((header) => (
+                            <SelectItem key={header} value={header}>
+                            {header}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div>
+                    <Label htmlFor={`aggregation-${config.id}`}>Aggregation</Label>
+                     <Select
+                        value={config.aggregation}
+                        onValueChange={(value) => handleConfigChange("aggregation", value)}
+                    >
+                        <SelectTrigger id={`aggregation-${config.id}`}>
+                            <SelectValue placeholder="Select aggregation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {aggregationTypes.map((agg) => (
+                            <SelectItem key={agg.value} value={agg.value}>
+                            {agg.label}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div>
+                    <Label htmlFor={`prefix-${config.id}`}>Prefix</Label>
+                    <Input id={`prefix-${config.id}`} value={config.prefix || ''} onChange={(e) => handleConfigChange('prefix', e.target.value)} placeholder="e.g. $" />
+                 </div>
+                  <div>
+                    <Label htmlFor={`suffix-${config.id}`}>Suffix</Label>
+                    <Input id={`suffix-${config.id}`} value={config.suffix || ''} onChange={(e) => handleConfigChange('suffix', e.target.value)} placeholder="e.g. %" />
+                 </div>
+            </>
+        )}
       </div>
     </div>
   );

@@ -61,7 +61,9 @@ export default function DashboardPage() {
     return data.filter(row => row[activeFilter.key] === activeFilter.value);
   }, [data, activeFilter]);
   
-  const displayedData = filteredData.slice(startRow, startRow + numRows);
+  const displayedData = useMemo(() => {
+      return filteredData.slice(startRow, startRow + numRows);
+  }, [filteredData, startRow, numRows]);
   
   const handleSetFilter = (key: string, value: string | number) => {
     setActiveFilter({ key, value });
@@ -256,6 +258,9 @@ export default function DashboardPage() {
       yAxis: headers[1] ? [headers[1]] : (headers[0] ? [headers[0]] : []),
       stackBy: headers.length > 2 ? headers[2] : undefined,
       value: headers.length > 2 ? headers[2] : (headers.length > 1 ? headers[1] : (headers[0] || "")),
+      aggregation: 'sum',
+      prefix: '',
+      suffix: '',
     };
     setChartConfigs([...chartConfigs, newChart]);
   };
@@ -501,8 +506,8 @@ export default function DashboardPage() {
                     })}>
                         {chartConfigs.map((config, index) => (
                             <div key={config.id} className="flex flex-col gap-4">
-                                <ChartControls config={config} data={displayedData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} onDataPointClick={handleSetFilter} />
+                                <ChartControls config={config} data={config.type === 'kpi' ? filteredData : displayedData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
+                                <ChartView ref={chartRefs.current[index]} config={config} data={config.type === 'kpi' ? filteredData : displayedData} onDataPointClick={handleSetFilter} />
                             </div>
                         ))}
                     </div>
