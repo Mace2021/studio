@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useRef, createRef, RefObject } from "react";
+import { useState, useRef, createRef, RefObject, useMemo } from "react";
 import * as xlsx from "xlsx";
-import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles, Pencil } from "lucide-react";
+import { BarChart, File, Columns, Rows, Plus, BrainCircuit, Download, Loader2, MessageCircleQuestion, Sparkles, Pencil, FilterX } from "lucide-react";
 import { suggestCharts } from "@/ai/flows/suggest-charts-flow";
 import { askQuestion } from "@/ai/flows/ask-question-flow";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ import { PaymentDialog } from "./payment-dialog";
 import { SuccessDialog } from "./success-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
+
+type Filter = {
+  key: string;
+  value: string | number;
+} | null;
 
 export default function DashboardPage() {
   const [data, setData] = useState<DataRow[]>([]);
@@ -47,8 +52,24 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
+  const [activeFilter, setActiveFilter] = useState<Filter>(null);
+
+  const filteredData = useMemo(() => {
+    if (!activeFilter) {
+      return data;
+    }
+    return data.filter(row => row[activeFilter.key] === activeFilter.value);
+  }, [data, activeFilter]);
   
-  const displayedData = data.slice(startRow, startRow + numRows);
+  const displayedData = filteredData.slice(startRow, startRow + numRows);
+  
+  const handleSetFilter = (key: string, value: string | number) => {
+    setActiveFilter({ key, value });
+  };
+  
+  const handleClearFilter = () => {
+      setActiveFilter(null);
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -70,6 +91,7 @@ export default function DashboardPage() {
           setAiSuggestions([]);
           setQuestion("");
           setAnswer("");
+          setActiveFilter(null);
           setStartRow(0);
           setNumRows(Math.min(20, jsonData.length));
           toast({ title: "Success", description: "File uploaded and parsed successfully." });
@@ -297,14 +319,14 @@ export default function DashboardPage() {
   const handleStartRowChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value)) {
-      setStartRow(Math.max(0, Math.min(data.length - 1, value)));
+      setStartRow(Math.max(0, Math.min(filteredData.length - 1, value)));
     }
   }
 
   const handleNumRowsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value)) {
-      setNumRows(Math.max(1, Math.min(data.length, value)));
+      setNumRows(Math.max(1, Math.min(filteredData.length, value)));
     }
   }
   
@@ -360,7 +382,7 @@ export default function DashboardPage() {
                     <CardContent className="flex flex-wrap items-center gap-4 pt-2">
                         <div className="flex items-center gap-2">
                             <Rows className="h-5 w-5 text-primary"/>
-                            <p>{data.length} Rows</p>
+                            <p>{filteredData.length} Rows</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Columns className="h-5 w-5 text-primary"/>
@@ -396,6 +418,21 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+            
+            {activeFilter && (
+                <Card>
+                    <CardContent className="p-3 flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                         <span className="text-sm font-medium">Filtered by:</span>
+                         <span className="text-sm text-primary font-semibold">{activeFilter.key} = &quot;{activeFilter.value}&quot;</span>
+                       </div>
+                       <Button variant="ghost" size="sm" onClick={handleClearFilter}>
+                           <FilterX className="mr-2 h-4 w-4" />
+                           Clear Filter
+                       </Button>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
               <CardHeader>
@@ -465,7 +502,7 @@ export default function DashboardPage() {
                         {chartConfigs.map((config, index) => (
                             <div key={config.id} className="flex flex-col gap-4">
                                 <ChartControls config={config} data={displayedData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} />
+                                <ChartView ref={chartRefs.current[index]} config={config} data={displayedData} onDataPointClick={handleSetFilter} />
                             </div>
                         ))}
                     </div>
@@ -517,11 +554,11 @@ export default function DashboardPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                   <div className="grid gap-2">
                       <Label htmlFor="start-row">Start Row</Label>
-                      <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={data.length - 1} className="w-32" disabled={data.length === 0}/>
+                      <Input id="start-row" type="number" value={startRow} onChange={handleStartRowChange} min={0} max={filteredData.length - 1} className="w-32" disabled={data.length === 0}/>
                   </div>
                   <div className="grid gap-2">
                       <Label htmlFor="num-rows">Number of Rows</Label>
-                      <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={data.length} className="w-32" disabled={data.length === 0}/>
+                      <Input id="num-rows" type="number" value={numRows} onChange={handleNumRowsChange} min={1} max={filteredData.length} className="w-32" disabled={data.length === 0}/>
                   </div>
               </div>
               <DataTable data={displayedData} headers={headers} className="overflow-x-auto"/>

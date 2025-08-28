@@ -4,7 +4,7 @@
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
-import React, { useState } from 'react';
+import React from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { scaleLinear } from 'd3-scale';
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 interface ChartViewProps {
   config: ChartConfig;
   data: DataRow[];
+  onDataPointClick?: (dataKey: string, value: string | number) => void;
 }
 
 const COLORS = ["#A78BFA", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#C4B5FD"];
@@ -118,9 +119,21 @@ const TreemapContent = (props: any) => {
 };
 
 
-export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data }, ref) => {
+export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ config, data, onDataPointClick }, ref) => {
   const yAxisKey = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = React.useState(0);
+
+  const handleBarClick = (payload: any) => {
+    if (onDataPointClick && payload) {
+        onDataPointClick(config.xAxis, payload.activeLabel);
+    }
+  }
+
+  const handlePieClick = (payload: any) => {
+      if (onDataPointClick && payload) {
+          onDataPointClick(config.xAxis, payload.name);
+      }
+  }
 
   const renderChart = () => {
     if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value))) {
@@ -162,7 +175,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
       case "bar":
         return (
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={data} margin={{ bottom: 50 }}>
+            <BarChart data={data} margin={{ bottom: 50 }} onClick={handleBarClick} className={onDataPointClick ? 'cursor-pointer' : ''}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
@@ -179,7 +192,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
       case "horizontal-bar":
         return (
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
+            <BarChart data={data} layout="vertical" margin={{ left: 80 }} onClick={handleBarClick} className={onDataPointClick ? 'cursor-pointer' : ''}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} interval={0}/>
@@ -209,7 +222,8 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                     dataKey={yKey} 
                     stroke={COLORS[index % COLORS.length]} 
                     strokeWidth={2} 
-                    activeDot={{ r: 6 }}
+                    activeDot={{ r: 6, onClick: (e, payload) => onDataPointClick?.(config.xAxis, payload.payload[config.xAxis]) }}
+                    className={onDataPointClick ? 'cursor-pointer' : ''}
                 />
               ))}
             </LineChart>
@@ -269,7 +283,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                 cy="50%" 
                 innerRadius={config.type === 'doughnut' ? 60 : 0}
                 outerRadius={100} 
-                labelLine={false} 
+                labelLine={false}
+                onClick={handlePieClick}
+                className={onDataPointClick ? 'cursor-pointer' : ''}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                 {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
@@ -283,6 +299,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
           .map(row => ({
             x: parseFloat(String(row[config.xAxis])),
             y: parseFloat(String(row[yAxisKey])),
+            ...row
           }))
           .filter(point => !isNaN(point.x) && !isNaN(point.y));
 
@@ -298,9 +315,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                     <YAxis type="number" dataKey="y" name={yAxisKey} unit="" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
                     <Tooltip content={<CustomTooltip config={config} />} cursor={{ strokeDasharray: '3 3' }} />
                     <Legend />
-                    <Scatter name={`${yAxisKey} by ${config.xAxis}`} data={scatterData} fill="#8884d8">
+                    <Scatter name={`${yAxisKey} by ${config.xAxis}`} data={scatterData} fill="#8884d8" className={onDataPointClick ? 'cursor-pointer' : ''}>
                         {scatterData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} onClick={() => onDataPointClick?.(config.xAxis, entry.x)} />
                         ))}
                     </Scatter>
                 </ScatterChart>
@@ -317,15 +334,15 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         const groupKeys = new Set<string>();
 
         data.forEach(row => {
-          const xAxisKey = String(row[config.xAxis]);
+          const xAxisKeyValue = String(row[config.xAxis]);
           const groupKey = String(row[config.stackBy]);
           const yAxisValue = parseFloat(String(row[yAxisKey]));
 
-          if (xAxisKey && groupKey && !isNaN(yAxisValue)) {
-            if (!transformedData[xAxisKey]) {
-              transformedData[xAxisKey] = { [config.xAxis]: xAxisKey };
+          if (xAxisKeyValue && groupKey && !isNaN(yAxisValue)) {
+            if (!transformedData[xAxisKeyValue]) {
+              transformedData[xAxisKeyValue] = { [config.xAxis]: xAxisKeyValue };
             }
-            transformedData[xAxisKey][groupKey] = (transformedData[xAxisKey][groupKey] || 0) + yAxisValue;
+            transformedData[xAxisKeyValue][groupKey] = (transformedData[xAxisKeyValue][groupKey] || 0) + yAxisValue;
             groupKeys.add(groupKey);
           }
         });
@@ -352,7 +369,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
 
         return (
           <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={chartData} layout="horizontal" margin={{ bottom: 50 }}>
+            <BarChart data={chartData} layout="horizontal" margin={{ bottom: 50 }} onClick={handleBarClick} className={onDataPointClick ? 'cursor-pointer' : ''}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis type="category" dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end"/>
               <YAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
@@ -480,6 +497,8 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
                     stroke="#fff"
                     fill="#8884d8"
                     content={<TreemapContent colors={COLORS} />}
+                    onClick={(payload: any) => onDataPointClick?.(config.xAxis, payload.name)}
+                    className={onDataPointClick ? 'cursor-pointer' : ''}
                 >
                     <Tooltip content={<CustomTooltip config={config} />} />
                 </Treemap>
