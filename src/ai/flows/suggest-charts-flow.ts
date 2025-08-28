@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -10,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { ChartConfig, ChartType } from '@/lib/types';
 
 const SuggestChartsInputSchema = z.object({
   columnHeaders: z.array(z.string()).describe('The column headers of the data.'),
@@ -17,8 +19,20 @@ const SuggestChartsInputSchema = z.object({
 });
 export type SuggestChartsInput = z.infer<typeof SuggestChartsInputSchema>;
 
+const ChartConfigSchema = z.object({
+  id: z.string(),
+  type: z.enum(["bar", "line", "pie", "doughnut", "scatter", "stacked-bar", "heatmap", "grouped-bar", "pictogram", "area", "stacked-area", "funnel", "treemap", "radar", "horizontal-bar", "paginated-report", "kpi", "histogram", "pyramid"]),
+  xAxis: z.string(),
+  yAxis: z.array(z.string()),
+  stackBy: z.optional(z.string()),
+  value: z.optional(z.string()),
+  aggregation: z.optional(z.enum(['sum', 'average', 'count', 'min', 'max'])),
+  prefix: z.optional(z.string()),
+  suffix: z.optional(z.string()),
+});
+
 const SuggestChartsOutputSchema = z.object({
-  suggestions: z.array(z.string()).describe('A list of suggested chart types.'),
+  suggestions: z.array(ChartConfigSchema).describe('A list of suggested chart configurations.'),
 });
 export type SuggestChartsOutput = z.infer<typeof SuggestChartsOutputSchema>;
 
@@ -30,12 +44,21 @@ const prompt = ai.definePrompt({
   name: 'suggestChartsPrompt',
   input: {schema: SuggestChartsInputSchema},
   output: {schema: SuggestChartsOutputSchema},
-  prompt: `You are a data visualization expert. Based on the provided data structure and samples, suggest 3-5 creative and insightful chart types that would be relevant to visualize the data.
+  prompt: `You are a data visualization expert. Based on the provided data structure and samples, suggest 4 diverse and insightful chart configurations that would be relevant to visualize the data.
 
-Data Column Headers: {{{columnHeaders}}}
-Data Sample: {{{dataSample}}}
+Data Column Headers: {{{json columnHeaders}}}
+Data Sample: {{{json dataSample}}}
 
-Return your suggestions as a list of chart types. Be specific about the columns that you suggest visualizing, and what relationships they might show. For example, if column headers are 'date', 'product', and 'sales', suggest 'Line chart of sales over time' or 'Bar chart of sales by product'.`,config: {
+Identify which columns are categorical and which are numerical.
+For each chart, provide a valid configuration object.
+- The 'id' field should be a unique string starting with "chart-".
+- The 'type' must be one of the allowed chart types.
+- The 'xAxis' and 'yAxis' fields must be valid column headers from the data. 'yAxis' must be an array of strings.
+- For a 'kpi' chart, you must provide an 'aggregation' type. Choose one of 'sum', 'average', or 'count' that makes sense for the metric.
+- Suggest a variety of chart types (e.g., bar, line, pie, kpi). Do not suggest the same chart type multiple times.
+- Ensure the columns selected for xAxis and yAxis are appropriate for the chart type (e.g., numerical yAxis for bar/line charts).
+`,
+  config: {
     safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -68,3 +91,5 @@ const suggestChartsFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

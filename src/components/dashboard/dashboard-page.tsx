@@ -35,8 +35,6 @@ export default function DashboardPage() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [chartConfigs, setChartConfigs] = useState<ChartConfig[]>([]);
   const [layoutCols, setLayoutCols] = useState(2);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
@@ -47,6 +45,7 @@ export default function DashboardPage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { user, isSubscribed, subscribeUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,12 +72,15 @@ export default function DashboardPage() {
       setActiveFilter(null);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setIsUploading(true);
+    toast({ title: "Processing File...", description: "Reading and analyzing your data to create a dashboard." });
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const fileData = e.target?.result;
         const workbook = xlsx.read(fileData, { type: "binary" });
@@ -87,16 +89,25 @@ export default function DashboardPage() {
         const jsonData = xlsx.utils.sheet_to_json<DataRow>(worksheet);
 
         if (jsonData.length > 0) {
+          const newHeaders = Object.keys(jsonData[0]);
           setData(jsonData);
-          setHeaders(Object.keys(jsonData[0]));
-          setChartConfigs([]);
-          setAiSuggestions([]);
+          setHeaders(newHeaders);
           setQuestion("");
           setAnswer("");
           setActiveFilter(null);
           setStartRow(0);
           setNumRows(Math.min(20, jsonData.length));
-          toast({ title: "Success", description: "File uploaded and parsed successfully." });
+
+          // Generate charts with AI
+          const dataSample = jsonData.slice(0, 5);
+          const result = await suggestCharts({ columnHeaders: newHeaders, dataSample });
+
+          if (result && result.suggestions) {
+            setChartConfigs(result.suggestions);
+            toast({ title: "Dashboard Ready!", description: "Your initial dashboard has been generated." });
+          } else {
+             throw new Error("AI could not generate chart configurations.");
+          }
         } else {
             throw new Error("No data found in file.");
         }
@@ -105,11 +116,14 @@ export default function DashboardPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to parse the file. Please check the file format.",
+          description: "Failed to parse the file or generate charts. Please check the file format.",
         });
+      } finally {
+          setIsUploading(false);
       }
     };
     reader.onerror = () => {
+        setIsUploading(false);
         toast({
             variant: "destructive",
             title: "Error",
@@ -274,29 +288,6 @@ export default function DashboardPage() {
   const handleRemoveChart = (id: string) => {
     setChartConfigs(chartConfigs.filter((c) => c.id !== id));
   };
-  
-  const handleGetAiSuggestions = async () => {
-    if (data.length === 0) {
-        toast({ variant: "destructive", title: "No Data", description: "Please upload data before getting suggestions." });
-        return;
-    }
-    setLoadingSuggestions(true);
-    setAiSuggestions([]);
-    try {
-        const dataSample = data.slice(0, 5);
-        const result = await suggestCharts({ columnHeaders: headers, dataSample });
-        if (result && result.suggestions) {
-            setAiSuggestions(result.suggestions);
-        } else {
-            throw new Error("No suggestions returned from AI.");
-        }
-    } catch (error) {
-        console.error("AI suggestion error:", error);
-        toast({ variant: "destructive", title: "AI Error", description: "Could not fetch chart suggestions." });
-    } finally {
-        setLoadingSuggestions(false);
-    }
-  };
 
   const handleAskQuestion = async () => {
     if (data.length === 0 || !question) {
@@ -363,8 +354,9 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">Design and build a great dashboard.</p>
           </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <File className="mr-2 h-4 w-4" /> Upload Data
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <File className="mr-2 h-4 w-4" />}
+                    {data.length > 0 ? 'Upload New Data' : 'Upload Data'}
                 </Button>
                 <Input
                   ref={fileInputRef}
@@ -372,6 +364,7 @@ export default function DashboardPage() {
                   className="hidden"
                   onChange={handleFileUpload}
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                  disabled={isUploading}
                 />
                 <Button onClick={handleExportClick} disabled={chartConfigs.length === 0}>
                     <Download className="mr-2 h-4 w-4" /> Export PDF
@@ -396,33 +389,6 @@ export default function DashboardPage() {
                             <Columns className="h-5 w-5 text-primary"/>
                             <p>{headers.length} Columns</p>
                         </div>
-                    </CardContent>
-                </Card>
-                 <Card className="md:col-span-1 lg:col-span-3">
-                    <CardHeader className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">AI Chart Suggestions</CardTitle>
-                        <Button variant="ghost" size="sm" onClick={handleGetAiSuggestions} disabled={loadingSuggestions || data.length === 0}>
-                            {loadingSuggestions ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-                            ) : (
-                                <BrainCircuit className="mr-2 h-4 w-4" />
-                            )}
-                            Get Suggestions
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                        {loadingSuggestions && <p className="text-muted-foreground">Generating ideas...</p>}
-                        {aiSuggestions.length > 0 && (
-                            <Alert>
-                                <AlertTitle className="font-semibold">Here are some ideas!</AlertTitle>
-                                <AlertDescription>
-                                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                                        {aiSuggestions.map((s, i) => <li key={i}>{s}</li>)}
-                                    </ul>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {!loadingSuggestions && aiSuggestions.length === 0 && <p className="text-muted-foreground text-sm">Click the button to get AI-powered chart suggestions.</p>}
                     </CardContent>
                 </Card>
             </div>
@@ -550,8 +516,9 @@ export default function DashboardPage() {
                 <p className="mt-1 text-muted-foreground">
                     Upload a .csv, .xls, or .xlsx file to get started.
                 </p>
-                 <Button className="mt-4" onClick={() => fileInputRef.current?.click()}>
-                    <File className="mr-2 h-4 w-4" /> Select File
+                 <Button className="mt-4" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <File className="mr-2 h-4 w-4" />}
+                     Select File
                 </Button>
             </div>
         )}
@@ -581,3 +548,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    
