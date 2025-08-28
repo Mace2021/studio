@@ -507,12 +507,15 @@ export default function DashboardPage() {
                         "grid-cols-1 md:grid-cols-2": layoutCols === 2,
                         "grid-cols-1 md:grid-cols-2 xl:grid-cols-3": layoutCols === 3,
                     })}>
-                        {chartConfigs.map((config, index) => (
-                            <div key={config.id} className="flex flex-col gap-4">
-                                <ChartControls config={config} data={config.type === 'kpi' ? filteredData : displayedData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                <ChartView ref={chartRefs.current[index]} config={config} data={config.type === 'kpi' ? filteredData : displayedData} onDataPointClick={handleSetFilter} />
-                            </div>
-                        ))}
+                        {chartConfigs.map((config, index) => {
+                            const chartData = config.type === 'kpi' || config.type === 'histogram' ? filteredData : displayedData;
+                            return (
+                                <div key={config.id} className="flex flex-col gap-4">
+                                    <ChartControls config={config} data={chartData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
+                                    <ChartView ref={chartRefs.current[index]} config={config} data={chartData} onDataPointClick={handleSetFilter} />
+                                </div>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="flex h-48 flex-col items-center justify-center rounded-md border-2 border-dashed">
@@ -578,5 +581,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    

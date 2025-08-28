@@ -18,6 +18,7 @@ interface ChartControlsProps {
 
 const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "bar", label: "Bar Chart" },
+  { value: "histogram", label: "Histogram / Frequency Plot" },
   { value: "horizontal-bar", label: "Horizontal Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "area", label: "Area Chart" },
@@ -67,6 +68,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "heatmap": return "X-Axis (Category)";
         case "radar": return "Category";
         case "horizontal-bar": return "Category (Y-Axis)";
+        case "histogram": return "Category";
         default: return "X-Axis";
     }
   }
@@ -83,6 +85,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "radar": return "Value (Numeric)";
         case "horizontal-bar": return "Value (X-Axis)";
         case "kpi": return "Metric (Numeric)";
+        case "histogram": return "Value (Count)";
         default: return "Y-Axis (Value)";
     }
   }
@@ -123,7 +126,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        { config.type !== 'paginated-report' && config.type !== 'kpi' && <>
+        { config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && <>
           <div>
             <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
             <Select
@@ -219,6 +222,27 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </div>
           )}
         </>}
+        {config.type === 'histogram' && (
+            <div className="sm:col-span-2">
+                <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
+                <Select
+                    value={config.xAxis}
+                    onValueChange={(value) => handleConfigChange("xAxis", value)}
+                    disabled={headers.length === 0}
+                >
+                    <SelectTrigger id={`x-axis-${config.id}`}>
+                        <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {headers.map((header) => (
+                        <SelectItem key={header} value={header}>
+                            {header}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
         {config.type === 'kpi' && (
             <>
                 <div>

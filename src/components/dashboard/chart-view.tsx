@@ -52,6 +52,16 @@ const CustomTooltip = ({ active, payload, label, config }: any) => {
             </div>
           )
       }
+       if (config.type === 'histogram') {
+        const dataKey = payload[0].dataKey;
+        const value = payload[0].value;
+        return (
+          <div className="rounded-md border bg-background/90 p-2 shadow-sm">
+            <p className="font-bold">{label}</p>
+            <p className="text-sm" style={{ color: payload[0].fill }}>Count: {value.toLocaleString()}</p>
+          </div>
+        );
+      }
       return (
         <div className="rounded-md border bg-background/90 p-2 shadow-sm">
           <p className="font-bold">{label}</p>
@@ -159,7 +169,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
 
 
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && config.type !== 'kpi' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value)) || (config.type === 'kpi' && (!config.yAxis || !config.aggregation))) {
+    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value)) || (config.type === 'kpi' && (!config.yAxis || !config.aggregation)) || (config.type === 'histogram' && !config.xAxis)) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
@@ -210,6 +220,34 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
               </Button>
             </div>
           </div>
+        );
+      case "histogram":
+        const counts = data.reduce((acc, row) => {
+            const category = String(row[config.xAxis]);
+            acc[category] = (acc[category] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const histogramData = Object.entries(counts).map(([name, count]) => ({
+            [config.xAxis]: name,
+            'Count': count,
+        })).sort((a,b) => b.Count - a.Count);
+        
+        return (
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart data={histogramData} margin={{ bottom: 50 }} onClick={(payload: any) => onDataPointClick?.(config.xAxis, payload?.activeLabel)} className={onDataPointClick ? 'cursor-pointer' : ''}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80}/>
+              <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+              <Legend />
+              <Bar dataKey="Count" radius={[4, 4, 0, 0]}>
+                {histogramData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         );
       case "bar":
         return (
@@ -580,7 +618,13 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
         if (!yAxisTitle || !aggregationTitle) return "KPI";
         return `${aggregationTitle} of ${yAxisTitle}`;
     }
-    if (!config.xAxis || !config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
+    if (!config.xAxis) return "Untitled Chart";
+
+    if (config.type === 'histogram') {
+        return `Frequency of ${config.xAxis}`;
+    }
+    
+    if (!config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
     
     const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis.join(', ') : config.yAxis;
 
