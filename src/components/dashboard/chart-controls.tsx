@@ -31,6 +31,7 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "heatmap", label: "Heatmap" },
   { value: "pictogram", label: "Pictogram" },
   { value: "funnel", label: "Funnel Chart" },
+  { value: "pyramid", label: "Pyramid Chart" },
   { value: "treemap", label: "Treemap" },
   { value: "radar", label: "Radar Chart" },
   { value: "paginated-report", label: "Paginated Report" },
@@ -62,6 +63,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "pie": return "Category (Name)";
         case "doughnut": return "Category (Name)";
         case "funnel": return "Category (Name)";
+        case "pyramid": return "Category (Name)";
         case "treemap": return "Category (Name)";
         case "pictogram": return "Category";
         case "scatter": return "X-Axis (Numeric)";
@@ -78,6 +80,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "pie": return "Value";
         case "doughnut": return "Value";
         case "funnel": return "Value";
+        case "pyramid": return "Value";
         case "pictogram": return "Value (Numeric)";
         case "scatter": return "Y-Axis (Numeric)";
         case "heatmap": return "Y-Axis (Category)";

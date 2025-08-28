@@ -530,6 +530,7 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
           </div>
         );
       case 'funnel':
+      case 'pyramid':
         const funnelData = data.map(row => ({
             name: String(row[config.xAxis]),
             value: parseFloat(String(row[yAxisKey])),
@@ -538,6 +539,10 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
 
         if (funnelData.length === 0) {
             return <div className="flex h-[300px] items-center justify-center text-muted-foreground">No valid data for Funnel Chart.</div>;
+        }
+        
+        if (config.type === 'pyramid') {
+            funnelData.reverse();
         }
 
         return (
@@ -639,6 +644,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     }
     if (config.type === 'treemap' && config.value) {
         return `Treemap of ${config.xAxis} by ${config.value}`;
+    }
+    if (config.type === 'pyramid' && yAxisTitle) {
+        return `Pyramid of ${yAxisTitle} by ${config.xAxis}`;
     }
     return `${yAxisTitle} by ${config.xAxis}`;
   }
