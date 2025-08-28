@@ -440,7 +440,7 @@ export default function DashboardPage() {
                         "grid-cols-1 md:grid-cols-2 xl:grid-cols-3": layoutCols === 3,
                     })}>
                         {chartConfigs.map((config, index) => {
-                            const chartData = config.type === 'kpi' || config.type === 'histogram' ? filteredData : displayedData;
+                            const chartData = (config.type === 'kpi' || config.type === 'histogram' || config.type === 'roi') ? filteredData : displayedData;
                             return (
                                 <div key={config.id} className="flex flex-col gap-4">
                                     <ChartControls config={config} data={chartData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />

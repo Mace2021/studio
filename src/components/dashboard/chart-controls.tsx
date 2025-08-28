@@ -37,6 +37,7 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "radar", label: "Radar Chart" },
   { value: "paginated-report", label: "Paginated Report" },
   { value: "kpi", label: "KPI Card" },
+  { value: "roi", label: "ROI Calculator" },
 ];
 
 const aggregationTypes: { value: AggregationType; label: string }[] = [
@@ -130,7 +131,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
             </SelectContent>
           </Select>
         </div>
-        { config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && <>
+        { config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && config.type !== 'roi' && <>
           <div>
             <Label htmlFor={`x-axis-${config.id}`}>{getXAxisLabel()}</Label>
             <Select
@@ -308,6 +309,48 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
                     <Label htmlFor={`suffix-${config.id}`}>Suffix</Label>
                     <Input id={`suffix-${config.id}`} value={config.suffix || ''} onChange={(e) => handleConfigChange('suffix', e.target.value)} placeholder="e.g. %" />
                  </div>
+            </>
+        )}
+         {config.type === 'roi' && (
+            <>
+                <div className="sm:col-span-2">
+                    <Label htmlFor={`cost-column-${config.id}`}>Cost Column</Label>
+                     <Select
+                        value={config.costColumn}
+                        onValueChange={(value) => handleConfigChange("costColumn", value)}
+                        disabled={headers.length === 0}
+                    >
+                        <SelectTrigger id={`cost-column-${config.id}`}>
+                            <SelectValue placeholder="Select cost column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {headers.map((header) => (
+                            <SelectItem key={header} value={header}>
+                            {header}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div className="sm:col-span-2">
+                    <Label htmlFor={`return-column-${config.id}`}>Return Column</Label>
+                     <Select
+                        value={config.returnColumn}
+                        onValueChange={(value) => handleConfigChange("returnColumn", value)}
+                        disabled={headers.length === 0}
+                    >
+                        <SelectTrigger id={`return-column-${config.id}`}>
+                            <SelectValue placeholder="Select return column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {headers.map((header) => (
+                            <SelectItem key={header} value={header}>
+                            {header}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </>
         )}
       </div>

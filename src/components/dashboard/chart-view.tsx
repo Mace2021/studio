@@ -167,14 +167,41 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             return null;
     }
   }, [config, data, yAxisKey]);
+  
+  const roiValue = useMemo(() => {
+      if (config.type !== 'roi' || !config.costColumn || !config.returnColumn || data.length === 0) return null;
+
+      const totalCost = data.reduce((sum, row) => sum + (parseFloat(String(row[config.costColumn!])) || 0), 0);
+      const totalReturn = data.reduce((sum, row) => sum + (parseFloat(String(row[config.returnColumn!])) || 0), 0);
+      
+      if (totalCost === 0) return null; // Avoid division by zero
+
+      const roi = ((totalReturn - totalCost) / totalCost) * 100;
+      return roi;
+  }, [config, data]);
 
 
   const renderChart = () => {
-    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value)) || (config.type === 'kpi' && (!config.yAxis || !config.aggregation)) || (config.type === 'histogram' && !config.xAxis)) {
+    if ((config.type !== 'heatmap' && config.type !== 'treemap' && config.type !== 'paginated-report' && config.type !== 'kpi' && config.type !== 'histogram' && config.type !== 'roi' && (!config.xAxis || !config.yAxis || config.yAxis.length === 0)) || ((config.type === 'heatmap' || config.type === 'treemap') && (!config.xAxis || !config.value)) || (config.type === 'kpi' && (!config.yAxis || !config.aggregation)) || (config.type === 'histogram' && !config.xAxis) || (config.type === 'roi' && (!config.costColumn || !config.returnColumn))) {
         return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select columns for all options.</div>
     }
 
     switch (config.type) {
+      case "roi":
+          if (roiValue === null) {
+              return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Could not calculate ROI. Check columns.</div>
+          }
+          const formattedROI = roiValue.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+              minimumFractionDigits: 2
+          });
+          return (
+              <div className="flex h-[300px] flex-col items-center justify-center">
+                  <div className="text-6xl font-bold text-primary">
+                      {formattedROI}%
+                  </div>
+              </div>
+          )
       case "kpi":
         if (kpiValue === null) {
             return <div className="flex h-[300px] items-center justify-center text-muted-foreground">Please select a metric and aggregation.</div>
@@ -638,6 +665,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
   const getChartTitle = () => {
     if (config.type === 'paginated-report') {
       return "Paginated Report";
+    }
+    if (config.type === 'roi') {
+        return "Return on Investment (ROI)";
     }
     if (config.type === 'kpi') {
         const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis[0] : config.yAxis;
