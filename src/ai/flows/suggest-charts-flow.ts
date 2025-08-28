@@ -57,7 +57,8 @@ For each chart, provide a valid configuration object.
 - The 'type' must be one of the allowed chart types.
 - The 'xAxis' and 'yAxis' fields must be valid column headers from the data. 'yAxis' must be an array of strings.
 - For a 'kpi' chart, you must provide an 'aggregation' type. Choose one of 'sum', 'average', or 'count' that makes sense for the metric.
-- Suggest a variety of chart types (e.g., bar, line, pie, kpi, combo). Do not suggest the same chart type multiple times.
+- Suggest a variety of chart types. Do not suggest the same chart type multiple times.
+- One of the suggestions should be a 'combo' chart if the data has at least one clear categorical column (for the x-axis) and at least two numerical columns (for the y-axes).
 - For a 'combo' chart, you can optionally define a 'yAxis2' for a dual-axis chart.
 - Ensure the columns selected for xAxis and yAxis are appropriate for the chart type (e.g., numerical yAxis for bar/line charts).
 `,
