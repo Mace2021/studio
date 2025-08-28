@@ -2,7 +2,7 @@
 "use client";
 
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, ScatterChart, Scatter, Area, AreaChart, Funnel, FunnelChart, Treemap, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart
 } from "recharts";
 import React, { useMemo } from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
@@ -19,6 +19,7 @@ interface ChartViewProps {
 }
 
 const COLORS = ["#A78BFA", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#C4B5FD"];
+const COLORS_Y2 = ["#FA8B8B", "#ca82ca", "#58ffc6", "#ffc880", "#8088fe", "#c4c49f", "#B5C4FD"];
 const PIE_CHART_LABEL_THRESHOLD = 5;
 const ROWS_PER_PAGE = 10;
 
@@ -306,6 +307,27 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
             </LineChart>
           </ResponsiveContainer>
         );
+        case "combo":
+            return (
+              <ResponsiveContainer width="100%" height={350}>
+                <ComposedChart data={data} margin={{ bottom: 50 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey={config.xAxis} stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+                  <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
+                  {config.yAxis2 && config.yAxis2.length > 0 && (
+                      <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
+                  )}
+                  <Tooltip content={<CustomTooltip config={config} />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+                  <Legend />
+                  {Array.isArray(config.yAxis) && config.yAxis.map((yKey, index) => (
+                      <Bar key={yKey} yAxisId="left" dataKey={yKey} fill={COLORS[index % COLORS.length]} radius={[4, 4, 0, 0]} onClick={(payload: any) => onDataPointClick?.(config.xAxis, payload[config.xAxis])} className={onDataPointClick ? 'cursor-pointer' : ''} />
+                  ))}
+                   {Array.isArray(config.yAxis2) && config.yAxis2.map((yKey, index) => (
+                      <Line key={yKey} yAxisId="right" type="monotone" dataKey={yKey} stroke={COLORS_Y2[index % COLORS_Y2.length]} strokeWidth={2} activeDot={{ r: 6, onClick: (e, payload) => onDataPointClick?.(config.xAxis, payload.payload[config.xAxis]) }} className={onDataPointClick ? 'cursor-pointer' : ''} />
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            );
         case "area":
           return (
             <ResponsiveContainer width="100%" height={350}>
@@ -631,7 +653,11 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     
     if (!config.yAxis || config.yAxis.length === 0) return "Untitled Chart";
     
-    const yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis.join(', ') : config.yAxis;
+    let yAxisTitle = Array.isArray(config.yAxis) ? config.yAxis.join(', ') : config.yAxis;
+    if (config.type === 'combo' && Array.isArray(config.yAxis2) && config.yAxis2.length > 0) {
+        yAxisTitle += ` & ${config.yAxis2.join(', ')}`;
+    }
+
 
     if (config.type === 'pie' || config.type === 'doughnut') {
       return `Distribution of ${yAxisTitle} by ${config.xAxis}`;
@@ -647,6 +673,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     }
     if (config.type === 'pyramid' && yAxisTitle) {
         return `Pyramid of ${yAxisTitle} by ${config.xAxis}`;
+    }
+    if (config.type === 'combo') {
+        return `Combo Chart: ${yAxisTitle} by ${config.xAxis}`;
     }
     return `${yAxisTitle} by ${config.xAxis}`;
   }

@@ -22,6 +22,7 @@ const chartTypes: { value: ChartConfig['type']; label: string }[] = [
   { value: "horizontal-bar", label: "Horizontal Bar Chart" },
   { value: "line", label: "Line Chart" },
   { value: "area", label: "Area Chart" },
+  { value: "combo", label: "Combo Chart (Bar/Line)" },
   { value: "pie", label: "Pie Chart" },
   { value: "doughnut", label: "Doughnut Chart" },
   { value: "scatter", label: "Scatter Plot" },
@@ -54,8 +55,8 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
     onUpdate({ ...config, [key]: value });
   };
   
-  const handleMultiSelectChange = (selected: {label: string, value: string}[]) => {
-     handleConfigChange('yAxis', selected.map(s => s.value));
+  const handleMultiSelectChange = (key: 'yAxis' | 'yAxis2', selected: {label: string, value: string}[]) => {
+     handleConfigChange(key, selected.map(s => s.value));
   }
 
   const getXAxisLabel = () => {
@@ -89,11 +90,12 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
         case "horizontal-bar": return "Value (X-Axis)";
         case "kpi": return "Metric (Numeric)";
         case "histogram": return "Value (Count)";
+        case "combo": return "Y-Axis 1 (Bars) - Select one or more";
         default: return "Y-Axis (Value)";
     }
   }
   
-  const isMultiYAxis = config.type === 'line' || config.type === 'radar';
+  const isMultiYAxis = config.type === 'line' || config.type === 'radar' || config.type === 'combo';
 
   return (
     <div className="relative space-y-4 rounded-md border bg-background/50 p-4">
@@ -112,8 +114,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
           <Select
             value={config.type}
             onValueChange={(value: ChartConfig['type']) => {
-                // When changing chart type, if it's not a multi-y-axis chart, ensure yAxis has only one value
-                const newYAxis = (!isMultiYAxis && Array.isArray(config.yAxis)) ? [config.yAxis[0] || ''] : config.yAxis;
+                const newYAxis = (value !== 'line' && value !== 'radar' && value !== 'combo' && Array.isArray(config.yAxis)) ? [config.yAxis[0] || ''] : config.yAxis;
                 onUpdate({ ...config, type: value, yAxis: newYAxis });
             }}
           >
@@ -155,7 +156,7 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
               <MultiSelect
                   options={headerOptions}
                   value={Array.isArray(config.yAxis) ? config.yAxis.map(y => ({label: y, value: y})) : []}
-                  onChange={handleMultiSelectChange}
+                  onChange={(s) => handleMultiSelectChange('yAxis', s)}
                   labelledBy="Select"
                   hasSelectAll={false}
                   overrideStrings={{
@@ -182,6 +183,20 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
               </Select>
             )}
           </div>
+          {config.type === 'combo' && (
+             <div className="sm:col-span-2">
+                <Label htmlFor={`y-axis-2-${config.id}`}>Y-Axis 2 (Lines) - Optional</Label>
+                 <MultiSelect
+                    options={headerOptions}
+                    value={Array.isArray(config.yAxis2) ? config.yAxis2.map(y => ({label: y, value: y})) : []}
+                    onChange={(s) => handleMultiSelectChange('yAxis2', s)}
+                    labelledBy="Select"
+                    hasSelectAll={false}
+                    overrideStrings={{ "selectSomeItems": "Select Y-Axis 2 columns..." }}
+                    className="multi-select-custom"
+                />
+             </div>
+          )}
           {(config.type === 'stacked-bar' || config.type === 'grouped-bar' || config.type === 'stacked-area') && (
             <div className="sm:col-span-2">
               <Label htmlFor={`stack-by-${config.id}`}>Group By (Category)</Label>

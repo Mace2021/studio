@@ -57,7 +57,7 @@ export default function DashboardPage() {
     if (!activeFilter) {
       return data;
     }
-    return data.filter(row => row[activeFilter.key] === activeFilter.value);
+    return data.filter(row => String(row[activeFilter.key]) === String(activeFilter.value));
   }, [data, activeFilter]);
   
   const displayedData = useMemo(() => {
@@ -548,5 +548,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    
