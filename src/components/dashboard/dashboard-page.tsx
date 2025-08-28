@@ -358,7 +358,10 @@ export default function DashboardPage() {
       />
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h1>
+            <p className="text-muted-foreground">Design and build a great dashboard.</p>
+          </div>
             <div className="flex flex-shrink-0 items-center gap-2">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                     <File className="mr-2 h-4 w-4" /> Upload Data
@@ -575,3 +578,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    
