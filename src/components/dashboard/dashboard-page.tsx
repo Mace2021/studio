@@ -20,10 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { ExportDialog, ExportOptions } from "./export-dialog";
-import { PaymentDialog } from "./payment-dialog";
-import { SuccessDialog } from "./success-dialog";
-import { useAuth } from "@/hooks/use-auth";
-import Link from "next/link";
 import Image from "next/image";
 
 type Filter = {
@@ -43,12 +39,8 @@ export default function DashboardPage() {
   const [startRow, setStartRow] = useState(0);
   const [numRows, setNumRows] = useState(20);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
-  const { user, isSubscribed, subscribeUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
@@ -133,41 +125,6 @@ export default function DashboardPage() {
     }
     reader.readAsBinaryString(file);
   };
-  
-  const handlePaymentSuccess = (type: 'onetime' | 'subscription') => {
-    setIsPaymentDialogOpen(false);
-    if (type === 'onetime') {
-      setSuccessMessage("You've successfully made a one-time payment! You can now export your PDF.");
-    } else {
-      subscribeUser();
-      setSuccessMessage("You've successfully subscribed! You now have unlimited PDF exports.");
-    }
-    setIsSuccessDialogOpen(true);
-  };
-
-  const handleStartExport = () => {
-    setIsSuccessDialogOpen(false);
-    setIsExportDialogOpen(true);
-  };
-
-  const handleExportClick = () => {
-    if (!user) {
-        toast({
-            variant: "destructive",
-            title: "Authentication Required",
-            description: "You need to be logged in to export.",
-            action: <Link href="/login"><Button variant="outline" size="sm">Login</Button></Link>
-        });
-        return;
-    }
-
-    if (isSubscribed) {
-        setIsExportDialogOpen(true);
-    } else {
-        setIsPaymentDialogOpen(true);
-    }
-  }
-
 
   const handleExportPDF = async (options: ExportOptions) => {
     toast({ title: "Exporting PDF...", description: "Please wait while we generate your PDF." });
@@ -332,17 +289,6 @@ export default function DashboardPage() {
 
   return (
     <main className="p-4 sm:p-6 md:p-8">
-       <PaymentDialog
-        isOpen={isPaymentDialogOpen}
-        onClose={() => setIsPaymentDialogOpen(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
-      <SuccessDialog
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-        onConfirm={handleStartExport}
-        message={successMessage}
-      />
        <ExportDialog 
         isOpen={isExportDialogOpen} 
         onClose={() => setIsExportDialogOpen(false)} 
@@ -367,7 +313,7 @@ export default function DashboardPage() {
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                   disabled={isUploading}
                 />
-                <Button onClick={handleExportClick} disabled={chartConfigs.length === 0}>
+                <Button onClick={() => setIsExportDialogOpen(true)} disabled={chartConfigs.length === 0}>
                     <Download className="mr-2 h-4 w-4" /> Export PDF
                 </Button>
             </div>

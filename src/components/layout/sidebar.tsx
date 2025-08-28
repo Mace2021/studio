@@ -3,8 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, LogIn, LogOut, UserPlus, Lightbulb } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Home, Info, Mail, Lightbulb } from "lucide-react";
 import Image from "next/image";
 
 import {
@@ -26,7 +25,6 @@ const links = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
 
   return (
     <Sidebar>
@@ -53,35 +51,6 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="mt-auto">
-        <SidebarMenu>
-           {user ? (
-             <SidebarMenuItem>
-                <SidebarMenuButton onClick={signOut} className="w-full">
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                </SidebarMenuButton>
-             </SidebarMenuItem>
-           ) : (
-            <>
-              <SidebarMenuItem>
-                <Link href="/login">
-                    <SidebarMenuButton isActive={pathname === '/login'} className="w-full">
-                        <LogIn className="h-4 w-4" />
-                        <span>Login</span>
-                    </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <Link href="/signup">
-                    <SidebarMenuButton isActive={pathname === '/signup'} className="w-full">
-                        <UserPlus className="h-4 w-4" />
-                        <span>Sign Up</span>
-                    </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            </>
-           )}
-        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
