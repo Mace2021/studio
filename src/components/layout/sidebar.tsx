@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Home, Info, Mail, LogIn, LogOut, UserPlus, Lightbulb } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import Image from "next/image";
 
@@ -21,6 +21,7 @@ const links = [
   { href: "/", label: "Home", icon: Home },
   { href: "/about", label: "About", icon: Info },
   { href: "/contact", label: "Contact", icon: Mail },
+  { href: "/tutorial", label: "Tutorial", icon: Lightbulb },
 ];
 
 export function AppSidebar() {

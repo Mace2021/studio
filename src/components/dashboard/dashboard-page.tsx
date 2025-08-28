@@ -24,6 +24,7 @@ import { PaymentDialog } from "./payment-dialog";
 import { SuccessDialog } from "./success-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
+import Image from "next/image";
 
 type Filter = {
   key: string;
@@ -371,6 +372,25 @@ export default function DashboardPage() {
                 </Button>
             </div>
         </div>
+        
+        {data.length === 0 && (
+           <Card className="w-full">
+            <CardContent className="p-6 flex flex-col items-center text-center">
+                 <Image 
+                    src="https://picsum.photos/1200/600" 
+                    alt="Sample Dashboard PDF"
+                    data-ai-hint="dashboard professional"
+                    width={1200}
+                    height={600}
+                    className="w-full max-w-4xl rounded-lg border shadow-md mb-4"
+                />
+                <h2 className="text-2xl font-headline mt-4">Powerful Dashboards Made Easy</h2>
+                <p className="text-muted-foreground max-w-2xl">
+                    Turn your data into beautiful, interactive dashboards. Upload a file to see the magic happen. Our AI will automatically generate insightful charts and key metrics for you.
+                </p>
+            </CardContent>
+           </Card>
+        )}
 
         {data.length > 0 ? (
           <>
@@ -398,7 +418,7 @@ export default function DashboardPage() {
                     <CardContent className="p-3 flex items-center justify-between">
                        <div className="flex items-center gap-2">
                          <span className="text-sm font-medium">Filtered by:</span>
-                         <span className="text-sm text-primary font-semibold">{activeFilter.key} = &quot;{activeFilter.value}&quot;</span>
+                         <span className="text-sm text-primary font-semibold">{activeFilter.key} = "{activeFilter.value}"</span>
                        </div>
                        <Button variant="ghost" size="sm" onClick={handleClearFilter}>
                            <FilterX className="mr-2 h-4 w-4" />
