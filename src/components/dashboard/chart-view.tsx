@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import React, { useMemo } from 'react';
 import { ChartConfig, DataRow } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { scaleLinear } from 'd3-scale';
 import { User, ChevronLeft, ChevronRight } from "lucide-react";
 import { DataTable } from "./data-table";
@@ -714,6 +714,9 @@ export const ChartView = React.forwardRef<HTMLDivElement, ChartViewProps>(({ con
     <Card className="flex-1" ref={ref}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">{getChartTitle()}</CardTitle>
+        {config.notes && (
+          <CardDescription className="pt-2">{config.notes}</CardDescription>
+        )}
       </CardHeader>
       <CardContent>
         {renderChart()}

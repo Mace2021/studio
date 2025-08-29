@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "react-multi-select-component";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 
 interface ChartControlsProps {
   config: ChartConfig;
@@ -353,6 +354,16 @@ export function ChartControls({ config, data, onUpdate, onRemove }: ChartControl
                 </div>
             </>
         )}
+      </div>
+      <div className="space-y-2 pt-4">
+        <Label htmlFor={`notes-${config.id}`}>Chart Notes</Label>
+        <Textarea
+          id={`notes-${config.id}`}
+          value={config.notes || ''}
+          onChange={(e) => handleConfigChange('notes', e.target.value)}
+          placeholder="Describe what you are graphing or provide additional information..."
+          rows={3}
+        />
       </div>
     </div>
   );

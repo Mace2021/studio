@@ -245,6 +245,7 @@ export default function DashboardPage() {
       aggregation: 'sum',
       prefix: '',
       suffix: '',
+      notes: '',
     };
     setChartConfigs([...chartConfigs, newChart]);
   };
@@ -455,8 +456,10 @@ export default function DashboardPage() {
                             const chartData = (config.type === 'kpi' || config.type === 'histogram' || config.type === 'roi') ? filteredData : displayedData;
                             return (
                                 <div key={config.id} className="flex flex-col gap-4">
+                                    <div ref={chartRefs.current[index]}>
+                                        <ChartView config={config} data={chartData} onDataPointClick={handleSetFilter} />
+                                    </div>
                                     <ChartControls config={config} data={chartData} onUpdate={handleUpdateChart} onRemove={handleRemoveChart} />
-                                    <ChartView ref={chartRefs.current[index]} config={config} data={chartData} onDataPointClick={handleSetFilter} />
                                 </div>
                             );
                         })}

@@ -17,6 +17,7 @@ export interface ChartConfig {
   suffix?: string;
   costColumn?: string; // For ROI
   returnColumn?: string; // For ROI
+  notes?: string;
 }
 
 export type DataRow = Record<string, string | number>;
