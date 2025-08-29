@@ -76,13 +76,25 @@ export default function DashboardPage() {
     reader.onload = async (e) => {
       try {
         const fileData = e.target?.result;
-        const workbook = xlsx.read(fileData, { type: "binary" });
+        const workbook = xlsx.read(fileData, { type: "binary", cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = xlsx.utils.sheet_to_json<DataRow>(worksheet);
+        
+        // Use sheet_to_json with raw: false to get formatted strings for dates
+        const jsonDataRaw = xlsx.utils.sheet_to_json<DataRow>(worksheet, { raw: false, defval: "" });
 
-        if (jsonData.length > 0) {
-          const newHeaders = Object.keys(jsonData[0]);
+        if (jsonDataRaw.length > 0) {
+          const newHeaders = Object.keys(jsonDataRaw[0]);
+
+          // Ensure all data is serializable (convert everything to string)
+          const jsonData = jsonDataRaw.map(row => {
+            const newRow: DataRow = {};
+            for(const key in row) {
+                newRow[key] = String(row[key]);
+            }
+            return newRow;
+          });
+
           setData(jsonData);
           setHeaders(newHeaders);
           setQuestion("");
@@ -323,7 +335,7 @@ export default function DashboardPage() {
            <Card className="w-full">
             <CardContent className="p-6 flex flex-col items-center text-center">
                  <Image 
-                    src="/visualdash_dashboard.jpeg" 
+                    src="https://picsum.photos/1200/600" 
                     alt="Sample Dashboard PDF"
                     data-ai-hint="dashboard professional"
                     width={1200}
@@ -514,3 +526,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+    
