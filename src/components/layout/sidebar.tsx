@@ -3,8 +3,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, Lightbulb, LogIn, UserPlus } from "lucide-react";
+import { Home, Info, Mail, Lightbulb, LogIn, UserPlus, LogOut } from "lucide-react";
 import Image from "next/image";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -30,6 +32,7 @@ const authLinks = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   return (
     <Sidebar>
@@ -57,19 +60,31 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="mt-auto p-2">
         <SidebarMenu>
-            {authLinks.map((link) => (
-                <SidebarMenuItem key={link.href}>
-                    <Link href={link.href}>
-                        <SidebarMenuButton
-                        isActive={pathname === link.href}
+            {!user ? (
+                authLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                        <Link href={link.href}>
+                            <SidebarMenuButton
+                            isActive={pathname === link.href}
+                            className="w-full"
+                            >
+                            <link.icon className="h-4 w-4" />
+                            <span>{link.label}</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                ))
+            ) : (
+                <SidebarMenuItem>
+                    <SidebarMenuButton
+                        onClick={signOut}
                         className="w-full"
                         >
-                        <link.icon className="h-4 w-4" />
-                        <span>{link.label}</span>
-                        </SidebarMenuButton>
-                    </Link>
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                    </SidebarMenuButton>
                 </SidebarMenuItem>
-            ))}
+            )}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

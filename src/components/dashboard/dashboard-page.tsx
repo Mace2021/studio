@@ -20,7 +20,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { ExportDialog, ExportOptions } from "./export-dialog";
+import { PaymentDialog } from "./payment-dialog";
+import { SuccessDialog } from "./success-dialog";
 import Image from "next/image";
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
 
 type Filter = {
   key: string;
@@ -39,12 +43,17 @@ export default function DashboardPage() {
   const [startRow, setStartRow] = useState(0);
   const [numRows, setNumRows] = useState(20);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
   const [activeFilter, setActiveFilter] = useState<Filter>(null);
+  const { user, isSubscribed, setSubscribed } = useAuth();
+  const router = useRouter();
+
 
   const filteredData = useMemo(() => {
     if (!activeFilter) {
@@ -137,6 +146,33 @@ export default function DashboardPage() {
     }
     reader.readAsBinaryString(file);
   };
+  
+  const handleExportClick = () => {
+    if (!user) {
+        toast({
+            title: "Login Required",
+            description: "Please log in to export your dashboard.",
+            variant: "destructive",
+        });
+        router.push('/login');
+        return;
+    }
+
+    if (isSubscribed) {
+        setIsExportDialogOpen(true);
+    } else {
+        setIsPaymentDialogOpen(true);
+    }
+  }
+  
+  const handlePaymentSuccess = (type: 'onetime' | 'subscription') => {
+      if (type === 'subscription') {
+          setSubscribed(true);
+      }
+      setIsPaymentDialogOpen(false);
+      setIsSuccessDialogOpen(true);
+  }
+
 
   const handleExportPDF = async (options: ExportOptions) => {
     toast({ title: "Exporting PDF...", description: "Please wait while we generate your PDF." });
@@ -307,6 +343,18 @@ export default function DashboardPage() {
         onClose={() => setIsExportDialogOpen(false)} 
         onExport={handleExportPDF}
       />
+       <PaymentDialog 
+        isOpen={isPaymentDialogOpen} 
+        onClose={() => setIsPaymentDialogOpen(false)} 
+        onSuccess={handlePaymentSuccess}
+      />
+      <SuccessDialog
+        isOpen={isSuccessDialogOpen}
+        onClose={() => {
+            setIsSuccessDialogOpen(false);
+            setIsExportDialogOpen(true);
+        }}
+      />
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -326,7 +374,7 @@ export default function DashboardPage() {
                   accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                   disabled={isUploading}
                 />
-                <Button onClick={() => setIsExportDialogOpen(true)} disabled={chartConfigs.length === 0}>
+                <Button onClick={handleExportClick} disabled={chartConfigs.length === 0}>
                     <Download className="mr-2 h-4 w-4" /> Export PDF
                 </Button>
             </div>
