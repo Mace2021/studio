@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, Lightbulb } from "lucide-react";
+import { Home, Info, Mail, Lightbulb, LogIn, UserPlus } from "lucide-react";
 import Image from "next/image";
 
 import {
@@ -22,6 +22,11 @@ const links = [
   { href: "/contact", label: "Contact", icon: Mail },
   { href: "/tutorial", label: "Tutorial", icon: Lightbulb },
 ];
+
+const authLinks = [
+    { href: "/login", label: "Login", icon: LogIn },
+    { href: "/signup", label: "Sign Up", icon: UserPlus },
+]
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -50,7 +55,22 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="mt-auto">
+      <SidebarFooter className="mt-auto p-2">
+        <SidebarMenu>
+            {authLinks.map((link) => (
+                <SidebarMenuItem key={link.href}>
+                    <Link href={link.href}>
+                        <SidebarMenuButton
+                        isActive={pathname === link.href}
+                        className="w-full"
+                        >
+                        <link.icon className="h-4 w-4" />
+                        <span>{link.label}</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            ))}
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
