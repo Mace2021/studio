@@ -27,7 +27,7 @@ const tutorialSteps = [
     {
         icon: Download,
         title: "Export Your PDF",
-        description: "Once your dashboard is ready, click the 'Export PDF' button. You can choose the page orientation and layout to create a professional, shareable report.",
+        description: "Once your dashboard is ready, click the 'Export PDF' button. You can choose the page orientation and layout to create a professional, shareable report. Then add your notes and comments below.",
     }
 ]
 
@@ -65,7 +65,7 @@ export default function TutorialPage() {
                 <h3 className="text-lg font-semibold text-center">Portrait Layout</h3>
                  <div className="overflow-hidden rounded-lg border shadow-md">
                     <Image 
-                        src="https://picsum.photos/400/565" 
+                        src="/exportpdftwochartperpageportrait.png" 
                         alt="Sample PDF in Portrait"
                         data-ai-hint="dashboard portrait"
                         width={400}
@@ -78,7 +78,7 @@ export default function TutorialPage() {
                 <h3 className="text-lg font-semibold text-center">Landscape Layout</h3>
                 <div className="overflow-hidden rounded-lg border shadow-md">
                      <Image 
-                        src="https://picsum.photos/800/565" 
+                        src="/exportpdftwochartperpagelandscape.png" 
                         alt="Sample PDF in Landscape"
                         data-ai-hint="dashboard landscape"
                         width={800}

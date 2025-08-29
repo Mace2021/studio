@@ -323,7 +323,7 @@ export default function DashboardPage() {
            <Card className="w-full">
             <CardContent className="p-6 flex flex-col items-center text-center">
                  <Image 
-                    src="https://picsum.photos/1200/600" 
+                    src="/visualdash_dashboard.jpeg" 
                     alt="Sample Dashboard PDF"
                     data-ai-hint="dashboard professional"
                     width={1200}
