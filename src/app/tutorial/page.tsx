@@ -61,8 +61,21 @@ export default function TutorialPage() {
           <CardTitle className="text-2xl font-headline">Sample PDF Exports</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-center">Portrait Layout: One chart per page</h3>
+                 <div className="overflow-hidden rounded-lg border shadow-md">
+                    <Image 
+                        src="/exportpdfonechartperpageportrait.png" 
+                        alt="Sample PDF in Portrait"
+                        data-ai-hint="dashboard portrait"
+                        width={400}
+                        height={565}
+                        className="w-full h-auto"
+                    />
+                 </div>
+            </div>
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-center">Portrait Layout</h3>
+                <h3 className="text-lg font-semibold text-center">Portrait Layout: Two charts per page</h3>
                  <div className="overflow-hidden rounded-lg border shadow-md">
                     <Image 
                         src="/exportpdftwochartperpageportrait.png" 
@@ -74,8 +87,22 @@ export default function TutorialPage() {
                     />
                  </div>
             </div>
+          
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-center">Landscape Layout: One chart per page</h3>
+                <div className="overflow-hidden rounded-lg border shadow-md">
+                     <Image 
+                        src="/exportpdfonechartperpagelandscape.png" 
+                        alt="Sample PDF in Landscape"
+                        data-ai-hint="dashboard landscape"
+                        width={800}
+                        height={565}
+                        className="w-full h-auto"
+                    />
+                </div>
+            </div>
              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-center">Landscape Layout</h3>
+                <h3 className="text-lg font-semibold text-center">Landscape Layout: Two charts per page</h3>
                 <div className="overflow-hidden rounded-lg border shadow-md">
                      <Image 
                         src="/exportpdftwochartperpagelandscape.png" 
