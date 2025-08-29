@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,20 +26,27 @@ interface PaymentDialogProps {
 // To prevent script from being loaded multiple times
 let payPalScriptLoaded = false;
 
+const PayPalForm = ({ formRef }: { formRef: React.RefObject<HTMLFormElement> }) => (
+    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top" ref={formRef} style={{ display: 'none' }}>
+      <input type="hidden" name="cmd" value="_s-xclick" />
+      <input type="hidden" name="hosted_button_id" value="RQKFJNGUZ732E" />
+      <input type="hidden" name="currency_code" value="USD" />
+      <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_paynowCC_LG.gif" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Buy Now" />
+    </form>
+);
+
+
 export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps) {
   const [paymentOption, setPaymentOption] = useState<'onetime' | 'subscription'>('subscription');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleOneTimePayment = async () => {
-    setIsProcessing(true);
-    toast({ title: 'Processing Payment...', description: 'Please wait while we securely process your payment.' });
 
-    // Simulate one-time payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    setIsProcessing(false);
-    onSuccess('onetime');
+  const handleOneTimePayment = () => {
+    if (formRef.current) {
+        formRef.current.submit();
+    }
   };
 
   useEffect(() => {
@@ -99,7 +106,7 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
               <RadioGroupItem value="onetime" id="onetime" />
               <div>
                 <p className="font-semibold">One-Time Export</p>
-                <p className="text-sm text-muted-foreground">$5.00</p>
+                <p className="text-sm text-muted-foreground">$2.00</p>
               </div>
             </Label>
             <Label
@@ -117,10 +124,7 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
           {paymentOption === 'subscription' ? (
               <div id="paypal-button-container" className="min-h-[100px] w-full"></div>
           ) : (
-             <div className="text-center text-sm text-muted-foreground pt-4">
-                <p>This is a simulation.</p>
-                <p>Your card will not be charged.</p>
-            </div>
+            <PayPalForm formRef={formRef} />
           )}
 
         </div>
