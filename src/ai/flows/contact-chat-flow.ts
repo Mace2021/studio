@@ -10,7 +10,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const MessageSchema = z.object({
     sender: z.enum(['user', 'bot']),
@@ -80,6 +80,9 @@ const contactChatFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    return output!;
+    if (!output) {
+      return { reply: "I'm sorry, I couldn't generate a response." };
+    }
+    return output;
   }
 );
