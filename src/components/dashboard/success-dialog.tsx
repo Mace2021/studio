@@ -18,6 +18,8 @@ interface SuccessDialogProps {
 }
 
 export function SuccessDialog({ isOpen, onClose }: SuccessDialogProps) {
+    if (!isOpen) return null;
+    
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -27,12 +29,12 @@ export function SuccessDialog({ isOpen, onClose }: SuccessDialogProps) {
             </div>
           <DialogTitle className="text-center text-2xl">Payment Successful!</DialogTitle>
           <DialogDescription className="text-center">
-            Thank you for your purchase. You can now proceed to export your PDF.
+            Thank you for your purchase. Your access has been unlocked.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button onClick={onClose} className="w-full">
-            Continue to Export
+            Continue
           </Button>
         </DialogFooter>
       </DialogContent>

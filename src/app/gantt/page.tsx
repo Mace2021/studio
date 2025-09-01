@@ -12,6 +12,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { Plus, Trash2, CalendarIcon, Crown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PaymentDialog } from '@/components/dashboard/payment-dialog';
+import { SuccessDialog } from '@/components/dashboard/success-dialog';
 
 type Task = {
   id: number;
@@ -63,13 +65,16 @@ const GanttDisplay = ({ tasks }: { tasks: Task[] }) => {
 };
 
 export default function GanttPage() {
-  const { user, isSubscribed } = useAuth();
+  const { user, isSubscribed, setSubscribed } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([
     { id: 1, name: 'Initial Planning', start: new Date(), end: addDays(new Date(), 4) },
     { id: 2, name: 'Design Phase', start: addDays(new Date(), 2), end: addDays(new Date(), 8) },
   ]);
   const [newTaskName, setNewTaskName] = useState('');
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+
 
   const handleAddTask = () => {
     if (!newTaskName.trim()) return;
@@ -91,30 +96,57 @@ export default function GanttPage() {
     setTasks(tasks.filter(t => t.id !== id));
   };
   
+  const handleSubscribeClick = () => {
+      if (!user) {
+          router.push('/login');
+      } else {
+          setIsPaymentDialogOpen(true);
+      }
+  }
+
+  const handlePaymentSuccess = (type: 'onetime' | 'subscription') => {
+      if (type === 'subscription') {
+          setSubscribed(true);
+      }
+      setIsPaymentDialogOpen(false);
+      setIsSuccessDialogOpen(true);
+  }
+
   if (!user || !isSubscribed) {
       return (
-          <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-              <Card className="w-full max-w-md text-center">
-                  <CardHeader>
-                      <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
-                          <Crown className="text-primary" />
-                          Premium Feature
-                      </CardTitle>
-                      <CardDescription>
-                          The Gantt Chart Maker is available exclusively to our subscribers.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <p className="mb-4">
-                          Upgrade your plan to get unlimited access to this tool and create powerful project timelines.
-                      </p>
-                       <Button onClick={() => router.push('/')}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            Go to Dashboard to Subscribe
+        <>
+            <PaymentDialog 
+                isOpen={isPaymentDialogOpen} 
+                onClose={() => setIsPaymentDialogOpen(false)} 
+                onSuccess={handlePaymentSuccess}
+            />
+             <SuccessDialog
+                isOpen={isSuccessDialogOpen}
+                onClose={() => setIsSuccessDialogOpen(false)}
+             />
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+                <Card className="w-full max-w-md text-center">
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-center gap-2 text-2xl font-headline">
+                            <Crown className="text-primary" />
+                            Premium Feature
+                        </CardTitle>
+                        <CardDescription>
+                            The Gantt Chart Maker is available exclusively to our subscribers.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="mb-4">
+                            Upgrade your plan to get unlimited access to this tool and create powerful project timelines.
+                        </p>
+                        <Button onClick={handleSubscribeClick}>
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                Subscribe Now
                         </Button>
-                  </CardContent>
-              </Card>
-          </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </>
       )
   }
 

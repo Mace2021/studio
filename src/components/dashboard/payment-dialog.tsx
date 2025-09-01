@@ -94,7 +94,7 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
         <DialogHeader>
           <DialogTitle>Unlock PDF Exports</DialogTitle>
           <DialogDescription>
-            Choose a payment option to export your dashboard. Subscribers get unlimited exports.
+            Choose a payment option to export your dashboard. Subscribers get unlimited exports and access to all premium features.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -115,7 +115,7 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
             >
               <RadioGroupItem value="subscription" id="subscription" />
               <div>
-                <p className="font-semibold">Unlimited Exports</p>
+                <p className="font-semibold">Unlimited Premium Access</p>
                 <p className="text-sm text-muted-foreground">$5.00 / month</p>
               </div>
             </Label>
