@@ -22,6 +22,16 @@ type Task = {
   end: Date;
 };
 
+const COLORS = [
+  "bg-blue-500/80",
+  "bg-green-500/80",
+  "bg-yellow-500/80",
+  "bg-purple-500/80",
+  "bg-pink-500/80",
+  "bg-indigo-500/80",
+  "bg-teal-500/80",
+];
+
 const GanttDisplay = ({ tasks }: { tasks: Task[] }) => {
     if (tasks.length === 0) {
         return (
@@ -47,14 +57,16 @@ const GanttDisplay = ({ tasks }: { tasks: Task[] }) => {
              ))}
         </div>
         {/* Rows */}
-        {tasks.map(task => {
+        {tasks.map((task, index) => {
             const offset = differenceInDays(task.start, startDate);
             const duration = differenceInDays(task.end, task.start) + 1;
             return (
                 <div key={task.id} className="grid items-center" style={{ gridTemplateColumns: `150px repeat(${totalDays}, minmax(40px, 1fr))`}}>
                     <div className="sticky left-0 z-10 truncate border-r bg-muted/50 p-2 text-sm" title={task.name}>{task.name}</div>
                     <div style={{ gridColumnStart: offset + 2, gridColumnEnd: `span ${duration}` }}>
-                         <div className="h-6 rounded-md bg-primary/80" />
+                         <div className={cn("h-8 flex items-center justify-start px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length])}>
+                            <span className="truncate">{task.name}</span>
+                         </div>
                     </div>
                 </div>
             )
@@ -68,8 +80,9 @@ export default function GanttPage() {
   const { user, isSubscribed, setSubscribed } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([
-    { id: 1, name: 'Initial Planning', start: new Date(), end: addDays(new Date(), 4) },
+    { id: 1, name: 'Initial Planning and Research Phase', start: new Date(), end: addDays(new Date(), 4) },
     { id: 2, name: 'Design Phase', start: addDays(new Date(), 2), end: addDays(new Date(), 8) },
+    { id: 3, name: 'Development', start: addDays(new Date(), 9), end: addDays(new Date(), 20) },
   ]);
   const [newTaskName, setNewTaskName] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
