@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth } from 'date-fns';
 import { Plus, Trash2, CalendarIcon, Crown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentDialog } from '@/components/dashboard/payment-dialog';
@@ -22,6 +23,8 @@ type Task = {
   end: Date;
 };
 
+type View = 'day' | 'week' | 'month';
+
 const COLORS = [
   "bg-blue-500/80",
   "bg-green-500/80",
@@ -32,7 +35,7 @@ const COLORS = [
   "bg-teal-500/80",
 ];
 
-const GanttDisplay = ({ tasks }: { tasks: Task[] }) => {
+const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
     if (tasks.length === 0) {
         return (
             <div className="flex h-48 items-center justify-center rounded-md border-2 border-dashed">
@@ -40,30 +43,70 @@ const GanttDisplay = ({ tasks }: { tasks: Task[] }) => {
             </div>
         );
     }
-  const startDate = useMemo(() => new Date(Math.min(...tasks.map(t => t.start.getTime()))), [tasks]);
+  const startDate = useMemo(() => startOfWeek(new Date(Math.min(...tasks.map(t => t.start.getTime())))), [tasks]);
   const endDate = useMemo(() => new Date(Math.max(...tasks.map(t => t.end.getTime()))), [tasks]);
-  const totalDays = useMemo(() => differenceInDays(endDate, startDate) + 1, [startDate, endDate]);
-  const timeline = useMemo(() => Array.from({ length: totalDays }, (_, i) => addDays(startDate, i)), [totalDays, startDate]);
+
+  const timelineHeaders = useMemo(() => {
+    const headers = [];
+    let current = startDate;
+    if (view === 'day') {
+        const totalDays = differenceInDays(endDate, startDate) + 1;
+        for (let i = 0; i < totalDays; i++) {
+            headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
+        }
+    } else if (view === 'week') {
+        let weekStart = startOfWeek(startDate);
+        while(weekStart <= endDate) {
+            headers.push({ label: `Week of ${format(weekStart, 'MMM d')}`, start: weekStart });
+            weekStart = addDays(weekStart, 7);
+        }
+    } else if (view === 'month') {
+        let monthStart = startOfMonth(startDate);
+        while(monthStart <= endDate) {
+            headers.push({ label: format(monthStart, 'MMMM yyyy'), start: monthStart });
+            monthStart = addDays(monthStart, getDaysInMonth(monthStart));
+        }
+    }
+    return headers;
+  }, [startDate, endDate, view]);
+
+  const getTaskPosition = (task: Task) => {
+    if (view === 'day') {
+        const offset = differenceInDays(task.start, startDate);
+        const duration = differenceInDays(task.end, task.start) + 1;
+        return { offset, duration };
+    }
+    if (view === 'week') {
+        const offset = differenceInWeeks(task.start, startDate, { weekStartsOn: 1 });
+        const duration = differenceInWeeks(task.end, task.start, { weekStartsOn: 1 }) + 1;
+        return { offset, duration };
+    }
+    if (view === 'month') {
+        const offset = differenceInMonths(task.start, startDate);
+        const duration = differenceInMonths(task.end, task.start) + 1;
+        return { offset, duration };
+    }
+    return { offset: 0, duration: 0};
+  }
 
   return (
     <div className="space-y-2 overflow-x-auto">
         {/* Header */}
-        <div className="grid" style={{ gridTemplateColumns: `150px repeat(${totalDays}, minmax(40px, 1fr))`}}>
+        <div className="grid" style={{ gridTemplateColumns: `150px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
             <div className="sticky left-0 z-10 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
-             {timeline.map(day => (
-                 <div key={day.toString()} className="border-b p-2 text-center text-xs">
-                     {format(day, 'M/d')}
+             {timelineHeaders.map(header => (
+                 <div key={header.label} className="border-b p-2 text-center text-xs font-medium">
+                     {header.label}
                  </div>
              ))}
         </div>
         {/* Rows */}
         {tasks.map((task, index) => {
-            const offset = differenceInDays(task.start, startDate);
-            const duration = differenceInDays(task.end, task.start) + 1;
+            const { offset, duration } = getTaskPosition(task);
             return (
-                <div key={task.id} className="grid items-center" style={{ gridTemplateColumns: `150px repeat(${totalDays}, minmax(40px, 1fr))`}}>
+                <div key={task.id} className="grid items-center" style={{ gridTemplateColumns: `150px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
                     <div className="sticky left-0 z-10 truncate border-r bg-muted/50 p-2 text-sm" title={task.name}>{task.name}</div>
-                    <div style={{ gridColumnStart: offset + 2, gridColumnEnd: `span ${duration}` }}>
+                    <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${duration}` }} className="px-1">
                          <div className={cn("h-8 flex items-center justify-start px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length])}>
                             <span className="truncate">{task.name}</span>
                          </div>
@@ -87,6 +130,7 @@ export default function GanttPage() {
   const [newTaskName, setNewTaskName] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [view, setView] = useState<View>('day');
 
 
   const handleAddTask = () => {
@@ -230,12 +274,22 @@ export default function GanttPage() {
         
         <Card>
             <CardHeader>
-                <CardTitle>Timeline</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <CardTitle>Timeline</CardTitle>
+                  <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full sm:w-auto">
+                    <TabsList>
+                      <TabsTrigger value="day">Day</TabsTrigger>
+                      <TabsTrigger value="week">Week</TabsTrigger>
+                      <TabsTrigger value="month">Month</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
             </CardHeader>
             <CardContent>
-                <GanttDisplay tasks={tasks} />
+                <GanttDisplay tasks={tasks} view={view} />
             </CardContent>
         </Card>
     </div>
   );
 }
+
