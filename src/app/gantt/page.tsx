@@ -249,7 +249,7 @@ export default function GanttPage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [view, setView] = useState<View>('week');
-  const [templates, setTemplates] = useState(getTemplates());
+  const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
 
    useEffect(() => {
     // Initialize templates on the client-side to avoid hydration errors with dates
@@ -291,7 +291,9 @@ export default function GanttPage() {
   }
 
   const handleSelectTemplate = (template: 'q4Project' | 'projectDevelopment' | 'eventPlanning') => {
-    setTasks(templates[template]);
+    if(templates) {
+        setTasks(templates[template]);
+    }
   }
 
   if (!user || !isSubscribed) {
@@ -342,7 +344,7 @@ export default function GanttPage() {
            <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
+                        <Button variant="outline" disabled={!templates}>
                             Templates
                             <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
@@ -372,6 +374,4 @@ export default function GanttPage() {
     </div>
   );
 }
-    
-
     
