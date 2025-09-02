@@ -40,7 +40,7 @@ const COLORS = [
   "bg-teal-500/80",
 ];
 
-const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; }) => {
+const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; }) => {
     const taskRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
     const [newTaskName, setNewTaskName] = useState('');
     const gridRef = useRef<HTMLDivElement>(null);
@@ -56,7 +56,8 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
 
     useEffect(() => {
         if (tasks.length === 0) {
-            setStartDate(null);
+            const today = new Date();
+            setStartDate(startOfWeek(today));
             return;
         }
         const minDate = new Date(Math.min(...tasks.map(t => t.start.getTime())));
@@ -64,12 +65,15 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
     }, [tasks]);
     
     useEffect(() => {
-        if (!startDate || tasks.length === 0) {
+        if (!startDate) {
             setTimelineHeaders([]);
             return;
         };
 
-        const endDate = new Date(Math.max(...tasks.map(t => t.end.getTime())));
+        const endDate = tasks.length > 0 
+            ? new Date(Math.max(...tasks.map(t => t.end.getTime())))
+            : addDays(startDate, view === 'day' ? 30 : (view === 'week' ? 12*7 : 12*30)); // Default timeline length if no tasks
+
         const headers = [];
         if (view === 'day') {
             const totalDays = differenceInDays(endDate, startDate) + 1;
@@ -78,13 +82,15 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
             }
         } else if (view === 'week') {
             let weekStart = startOfWeek(startDate);
-            while(weekStart <= endDate) {
+            const endOfWeek = startOfWeek(endDate);
+            while(weekStart <= endOfWeek) {
                 headers.push({ label: `Week of ${format(weekStart, 'MMM d')}`, start: weekStart });
                 weekStart = addDays(weekStart, 7);
             }
         } else if (view === 'month') {
             let monthStart = startOfMonth(startDate);
-            while(monthStart <= endDate) {
+            const endOfMonth = startOfMonth(endDate);
+            while(monthStart <= endOfMonth) {
                 headers.push({ label: format(monthStart, 'MMMM yyyy'), start: monthStart });
                 monthStart = addDays(monthStart, getDaysInMonth(monthStart));
             }
@@ -101,10 +107,22 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
         }
     }
 
-    if (tasks.length === 0) {
+    if (tasks.length === 0 && !newTaskName) {
         return (
-            <div className="flex h-48 items-center justify-center rounded-md border-2 border-dashed">
-                <p className="text-muted-foreground">Add a task or select a template to begin.</p>
+             <div className="flex h-96 items-center justify-center rounded-md border-2 border-dashed">
+                <div className="text-center">
+                    <p className="text-muted-foreground">Your Gantt chart is empty.</p>
+                    <p className="text-sm text-muted-foreground mb-4">Select a template or add your first task below to begin.</p>
+                     <div className="w-72 mx-auto">
+                        <input
+                            value={newTaskName}
+                            onChange={e => setNewTaskName(e.target.value)}
+                            placeholder="Type your first task and press Enter..."
+                            className="bg-background border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+                        />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -112,22 +130,27 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
 
   const getTaskPosition = (task: Task) => {
     if (!startDate) return { offset: 0, duration: 0 };
-    if (view === 'day') {
-        const offset = differenceInDays(task.start, startDate);
-        const duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
-        return { offset, duration };
+    let offset, duration;
+    
+    switch (view) {
+        case 'day':
+            offset = differenceInDays(task.start, startDate);
+            duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
+            break;
+        case 'week':
+            offset = differenceInWeeks(task.start, startDate);
+            duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start) + 1);
+            break;
+        case 'month':
+            offset = differenceInMonths(task.start, startDate);
+            duration = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
+            break;
+        default:
+            offset = 0;
+            duration = 0;
     }
-    if (view === 'week') {
-        const offset = differenceInWeeks(task.start, startDate);
-        const duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start));
-        return { offset, duration };
-    }
-    if (view === 'month') {
-        const offset = differenceInMonths(task.start, startDate);
-        const duration = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
-        return { offset: 0, duration: 0 };
-    }
-    return { offset: 0, duration: 0};
+    
+    return { offset, duration };
   }
 
   return (
@@ -148,8 +171,13 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
                     const { offset, duration } = getTaskPosition(task);
                     const isMilestone = task.type === 'milestone';
                     return (
-                        <div key={task.id} className="grid items-center h-12 border-b" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                            <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center" title={task.name}>{task.name}</div>
+                        <div key={task.id} className="grid items-center h-12 border-b group" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
+                            <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center justify-between" title={task.name}>
+                                {task.name}
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
+                                    <Plus className="h-4 w-4 rotate-45" />
+                                </Button>
+                            </div>
                             <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${Math.max(1, duration)}` }} className="px-1 h-full flex items-center">
                                 <div
                                     id={`task-${task.id}`}
@@ -222,8 +250,8 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
 };
 
 const getTemplates = () => {
-    const year = new Date().getFullYear();
     const today = new Date();
+    const year = today.getFullYear();
     return {
         q4Project: [
                 { id: 1, name: 'Q4 Planning', start: new Date(year, 9, 1), end: new Date(year, 9, 5), type: 'task', progress: 100, dependencies: [], assignee: 'Manager' },
@@ -265,7 +293,11 @@ export default function GanttPage() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [view, setView] = useState<View>('week');
+  const [templates, setTemplates] = useState(getTemplates());
 
+   useEffect(() => {
+    setTemplates(getTemplates());
+  }, []);
 
   const handleAddTask = (name: string) => {
     if (!name.trim()) return;
@@ -277,6 +309,10 @@ export default function GanttPage() {
       { id: newId, name, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], assignee: '' },
     ]);
   };
+  
+  const handleDeleteTask = (id: number) => {
+      setTasks(currentTasks => currentTasks.filter(task => task.id !== id));
+  }
   
   const handleSubscribeClick = () => {
       if (!user) {
@@ -295,7 +331,7 @@ export default function GanttPage() {
   }
 
   const handleSelectTemplate = (template: 'q4Project' | 'projectDevelopment' | 'eventPlanning') => {
-    setTasks(getTemplates()[template]);
+    setTasks(templates[template]);
   }
 
   if (!user || !isSubscribed) {
@@ -357,6 +393,19 @@ export default function GanttPage() {
                         <DropdownMenuItem onClick={() => handleSelectTemplate('eventPlanning')}>Event Planning</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" disabled>
+                            Advanced
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem disabled>Show Critical Path</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Manage Resources</DropdownMenuItem>
+                        <DropdownMenuItem disabled>Task Costs</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
                     <TabsList>
                         <TabsTrigger value="day">Day</TabsTrigger>
@@ -371,10 +420,9 @@ export default function GanttPage() {
             tasks={tasks} 
             view={view}
             onAddTask={handleAddTask}
+            onDeleteTask={handleDeleteTask}
         />
     </div>
   );
 }
-    
-
     
