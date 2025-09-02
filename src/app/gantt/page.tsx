@@ -43,6 +43,9 @@ const COLORS = [
 const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; }) => {
     const taskRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
     const [newTaskName, setNewTaskName] = useState('');
+    const gridRef = useRef<HTMLDivElement>(null);
+    const [timelineHeaders, setTimelineHeaders] = useState<{label: string, start: Date}[]>([]);
+    const [startDate, setStartDate] = useState<Date | null>(null);
 
     useEffect(() => {
         taskRefs.current.clear();
@@ -50,6 +53,46 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
             taskRefs.current.set(task.id, null);
         });
     }, [tasks]);
+
+    useEffect(() => {
+        if (tasks.length === 0) {
+            setStartDate(null);
+            return;
+        }
+        const minDate = new Date(Math.min(...tasks.map(t => t.start.getTime())));
+        setStartDate(startOfWeek(minDate));
+    }, [tasks]);
+    
+    useEffect(() => {
+        if (!startDate || tasks.length === 0) {
+            setTimelineHeaders([]);
+            return;
+        };
+
+        const endDate = new Date(Math.max(...tasks.map(t => t.end.getTime())));
+        const headers = [];
+        if (view === 'day') {
+            const totalDays = differenceInDays(endDate, startDate) + 1;
+            for (let i = 0; i <= totalDays; i++) {
+                headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
+            }
+        } else if (view === 'week') {
+            let weekStart = startOfWeek(startDate);
+            while(weekStart <= endDate) {
+                headers.push({ label: `Week of ${format(weekStart, 'MMM d')}`, start: weekStart });
+                weekStart = addDays(weekStart, 7);
+            }
+        } else if (view === 'month') {
+            let monthStart = startOfMonth(startDate);
+            while(monthStart <= endDate) {
+                headers.push({ label: format(monthStart, 'MMMM yyyy'), start: monthStart });
+                monthStart = addDays(monthStart, getDaysInMonth(monthStart));
+            }
+        }
+        setTimelineHeaders(headers);
+
+    }, [startDate, tasks, view]);
+
 
     const handleAddTaskClick = () => {
         if (newTaskName.trim()) {
@@ -65,33 +108,10 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
             </div>
         );
     }
-  const startDate = useMemo(() => startOfWeek(new Date(Math.min(...tasks.map(t => t.start.getTime())))), [tasks]);
-  const endDate = useMemo(() => new Date(Math.max(...tasks.map(t => t.end.getTime()))), [tasks]);
-
-  const timelineHeaders = useMemo(() => {
-    const headers = [];
-    if (view === 'day') {
-        const totalDays = differenceInDays(endDate, startDate) + 1;
-        for (let i = 0; i <= totalDays; i++) {
-            headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
-        }
-    } else if (view === 'week') {
-        let weekStart = startOfWeek(startDate);
-        while(weekStart <= endDate) {
-            headers.push({ label: `Week of ${format(weekStart, 'MMM d')}`, start: weekStart });
-            weekStart = addDays(weekStart, 7);
-        }
-    } else if (view === 'month') {
-        let monthStart = startOfMonth(startDate);
-        while(monthStart <= endDate) {
-            headers.push({ label: format(monthStart, 'MMMM yyyy'), start: monthStart });
-            monthStart = addDays(monthStart, getDaysInMonth(monthStart));
-        }
-    }
-    return headers;
-  }, [startDate, endDate, view]);
+  
 
   const getTaskPosition = (task: Task) => {
+    if (!startDate) return { offset: 0, duration: 0 };
     if (view === 'day') {
         const offset = differenceInDays(task.start, startDate);
         const duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
@@ -105,14 +125,14 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
     if (view === 'month') {
         const offset = differenceInMonths(task.start, startDate);
         const duration = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
-        return { offset, duration };
+        return { offset: 0, duration: 0 };
     }
     return { offset: 0, duration: 0};
   }
 
   return (
     <Xwrapper>
-        <div className="space-y-2 overflow-x-auto relative border rounded-md bg-card">
+        <div ref={gridRef} className="space-y-2 overflow-x-auto relative border rounded-md bg-card">
             {/* Header */}
             <div className="grid sticky top-0 z-20 bg-muted/50" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
                 <div className="sticky left-0 z-10 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
@@ -166,7 +186,7 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
             task.dependencies.map(depId => {
                 const startTask = tasks.find(t => t.id === depId);
                 const endTask = task;
-                if (!startTask || !endTask) return null;
+                if (!startTask || !endTask || !gridRef.current) return null;
 
                 return (
                  <Xarrow
@@ -180,6 +200,19 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
                     path="grid"
                     headSize={4}
                     zIndex={10}
+                    passProps={{
+                       SVGcanvasProps: {
+                          style: {
+                             position: 'absolute',
+                             top: 0,
+                             left: 0,
+                             pointerEvents: 'none',
+                             overflow: 'visible',
+                             width: gridRef.current?.scrollWidth,
+                             height: gridRef.current?.scrollHeight,
+                          }
+                       }
+                    }}
                  />
                 )
             })
@@ -188,45 +221,40 @@ const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; o
   );
 };
 
-const templates = {
-    q4Project: (): Task[] => {
-        const year = new Date().getFullYear();
-        return [
-            { id: 1, name: 'Q4 Planning', start: new Date(year, 9, 1), end: new Date(year, 9, 5), type: 'task', progress: 100, dependencies: [], assignee: 'Manager' },
-            { id: 2, name: 'Feature A Dev', start: new Date(year, 9, 6), end: new Date(year, 9, 31), type: 'task', progress: 80, dependencies: [1], assignee: 'Dev Team' },
-            { id: 3, name: 'Feature B Dev', start: new Date(year, 10, 1), end: new Date(year, 10, 20), type: 'task', progress: 40, dependencies: [1], assignee: 'Dev Team' },
-            { id: 4, name: 'Mid-Q Review', start: new Date(year, 10, 21), end: new Date(year, 10, 21), type: 'milestone', progress: 100, dependencies: [2,3] },
-            { id: 5, name: 'Testing & QA', start: new Date(year, 10, 22), end: new Date(year, 11, 10), type: 'task', progress: 20, dependencies: [4], assignee: 'QA Team' },
-            { id: 6, name: 'Deployment', start: new Date(year, 11, 15), end: new Date(year, 11, 15), type: 'milestone', progress: 0, dependencies: [5] },
-            { id: 7, name: 'Holiday Code Freeze', start: new Date(year, 11, 20), end: new Date(year, 11, 31), type: 'task', progress: 10, dependencies: [6] },
-        ];
-    },
-    projectDevelopment: (): Task[] => {
-        const today = new Date();
-        return [
-            { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], assignee: 'Analyst' },
-            { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], assignee: 'Designer' },
-            { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2] },
-            { id: 4, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [3], assignee: 'FE Devs' },
-            { id: 5, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [3], assignee: 'BE Devs' },
-            { id: 6, name: 'API Integration', start: addDays(today, 46), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
-            { id: 7, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [6] },
-            { id: 8, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [7] },
-        ];
-    },
-    eventPlanning: (): Task[] => {
-        const today = new Date();
-        return [
-            { id: 1, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], assignee: 'Coordinator' },
-            { id: 2, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [1] },
-            { id: 3, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [2], assignee: 'Coordinator' },
-            { id: 4, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [3], assignee: 'Logistics' },
-            { id: 5, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [2], assignee: 'Marketing' },
-            { id: 6, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [4, 5] },
-            { id: 7, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [6] },
-            { id: 8, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [7] },
-        ];
-    },
+const getTemplates = () => {
+    const year = new Date().getFullYear();
+    const today = new Date();
+    return {
+        q4Project: [
+                { id: 1, name: 'Q4 Planning', start: new Date(year, 9, 1), end: new Date(year, 9, 5), type: 'task', progress: 100, dependencies: [], assignee: 'Manager' },
+                { id: 2, name: 'Feature A Dev', start: new Date(year, 9, 6), end: new Date(year, 9, 31), type: 'task', progress: 80, dependencies: [1], assignee: 'Dev Team' },
+                { id: 3, name: 'Feature B Dev', start: new Date(year, 10, 1), end: new Date(year, 10, 20), type: 'task', progress: 40, dependencies: [1], assignee: 'Dev Team' },
+                { id: 4, name: 'Mid-Q Review', start: new Date(year, 10, 21), end: new Date(year, 10, 21), type: 'milestone', progress: 100, dependencies: [2,3] },
+                { id: 5, name: 'Testing & QA', start: new Date(year, 10, 22), end: new Date(year, 11, 10), type: 'task', progress: 20, dependencies: [4], assignee: 'QA Team' },
+                { id: 6, name: 'Deployment', start: new Date(year, 11, 15), end: new Date(year, 11, 15), type: 'milestone', progress: 0, dependencies: [5] },
+                { id: 7, name: 'Holiday Code Freeze', start: new Date(year, 11, 20), end: new Date(year, 11, 31), type: 'task', progress: 10, dependencies: [6] },
+            ],
+        projectDevelopment: [
+                { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], assignee: 'Analyst' },
+                { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], assignee: 'Designer' },
+                { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2] },
+                { id: 4, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [3], assignee: 'FE Devs' },
+                { id: 5, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [3], assignee: 'BE Devs' },
+                { id: 6, name: 'API Integration', start: addDays(today, 46), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
+                { id: 7, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [6] },
+                { id: 8, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [7] },
+            ],
+        eventPlanning: [
+                { id: 1, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], assignee: 'Coordinator' },
+                { id: 2, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [1] },
+                { id: 3, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [2], assignee: 'Coordinator' },
+                { id: 4, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [3], assignee: 'Logistics' },
+                { id: 5, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [2], assignee: 'Marketing' },
+                { id: 6, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [4, 5] },
+                { id: 7, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [6] },
+                { id: 8, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [7] },
+            ],
+    }
 };
 
 
@@ -267,7 +295,7 @@ export default function GanttPage() {
   }
 
   const handleSelectTemplate = (template: 'q4Project' | 'projectDevelopment' | 'eventPlanning') => {
-    setTasks(templates[template]());
+    setTasks(getTemplates()[template]);
   }
 
   if (!user || !isSubscribed) {
@@ -347,4 +375,6 @@ export default function GanttPage() {
     </div>
   );
 }
+    
+
     
