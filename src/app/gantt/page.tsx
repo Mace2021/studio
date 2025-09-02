@@ -45,8 +45,9 @@ const COLORS = [
   "bg-teal-500/80",
 ];
 
-const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
+const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { tasks: Task[]; view: View; onUpdateTask: (id: number, field: keyof Task, value: any) => void; onRemoveTask: (id: number) => void; onAddTask: (name: string) => void; }) => {
     const taskRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
+    const [newTaskName, setNewTaskName] = useState('');
 
     useEffect(() => {
         taskRefs.current.clear();
@@ -54,6 +55,13 @@ const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
             taskRefs.current.set(task.id, null);
         });
     }, [tasks]);
+
+    const handleAddTaskClick = () => {
+        if (newTaskName.trim()) {
+            onAddTask(newTaskName);
+            setNewTaskName('');
+        }
+    }
 
     if (tasks.length === 0) {
         return (
@@ -110,9 +118,9 @@ const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
 
   return (
     <Xwrapper>
-        <div className="space-y-2 overflow-x-auto relative">
+        <div className="space-y-2 overflow-x-auto relative border rounded-md">
             {/* Header */}
-            <div className="grid sticky top-0 z-20 bg-background" style={{ gridTemplateColumns: `150px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
+            <div className="grid sticky top-0 z-20 bg-muted/50" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
                 <div className="sticky left-0 z-10 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
                  {timelineHeaders.map(header => (
                      <div key={header.label} className="border-b p-2 text-center text-xs font-medium">
@@ -126,8 +134,8 @@ const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
                     const { offset, duration } = getTaskPosition(task);
                     const isMilestone = task.type === 'milestone';
                     return (
-                        <div key={task.id} className="grid items-center h-12" style={{ gridTemplateColumns: `150px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                            <div className="sticky left-0 z-10 truncate border-r bg-muted/50 p-2 text-sm h-full flex items-center" title={task.name}>{task.name}</div>
+                        <div key={task.id} className="grid items-center h-12 border-b" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
+                            <div className="sticky left-0 z-10 truncate border-r bg-background p-2 text-sm h-full flex items-center" title={task.name}>{task.name}</div>
                             <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${duration}` }} className="px-1 h-full flex items-center">
                                 <div
                                     id={`task-${task.id}`}
@@ -163,6 +171,18 @@ const GanttDisplay = ({ tasks, view }: { tasks: Task[]; view: View }) => {
                  />
             ))
         )}
+        <div className="flex gap-2 pt-4">
+            <Input
+                value={newTaskName}
+                onChange={e => setNewTaskName(e.target.value)}
+                placeholder="Add a new task name..."
+                onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+            />
+            <Button onClick={handleAddTaskClick}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Task
+            </Button>
+        </div>
     </Xwrapper>
   );
 };
@@ -176,22 +196,20 @@ export default function GanttPage() {
     { id: 3, name: 'Initial Design Review', start: addDays(new Date(), 11), end: addDays(new Date(), 11), type: 'milestone', progress: 100, dependencies: [2] },
     { id: 4, name: 'Development', start: addDays(new Date(), 12), end: addDays(new Date(), 22), type: 'task', progress: 25, dependencies: [3], assignee: 'Charlie' },
   ]);
-  const [newTaskName, setNewTaskName] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [view, setView] = useState<View>('day');
+  const [view, setView] = useState<View>('week');
 
 
-  const handleAddTask = () => {
-    if (!newTaskName.trim()) return;
+  const handleAddTask = (name: string) => {
+    if (!name.trim()) return;
     const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
     const lastTask = tasks[tasks.length - 1];
     const newStart = lastTask ? addDays(lastTask.end, 1) : new Date();
     setTasks([
       ...tasks,
-      { id: newId, name: newTaskName, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], assignee: '' },
+      { id: newId, name, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], assignee: '' },
     ]);
-    setNewTaskName('');
   };
 
   const handleUpdateTask = (id: number, field: keyof Task, value: any) => {
@@ -275,102 +293,27 @@ export default function GanttPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart Maker</h1>
             <p className="text-muted-foreground">Plan and visualize your project timeline with advanced features.</p>
           </div>
+          <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
+            <TabsList>
+                <TabsTrigger value="day">Day</TabsTrigger>
+                <TabsTrigger value="week">Week</TabsTrigger>
+                <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         
         <Card>
             <CardHeader>
-                <CardTitle>Tasks</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-3">
-                    {tasks.map(task => (
-                        <div key={task.id} className="p-3 border rounded-md space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_150px_150px_auto] gap-2 items-center">
-                                <Input
-                                    value={task.name}
-                                    onChange={e => handleUpdateTask(task.id, 'name', e.target.value)}
-                                    placeholder="Task Name"
-                                />
-                                <Select value={task.type} onValueChange={(v: TaskType) => handleUpdateTask(task.id, 'type', v)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="task">Task</SelectItem>
-                                        <SelectItem value="milestone">Milestone</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !task.start && "text-muted-foreground")}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {task.start ? format(task.start, "PPP") : <span>Pick a start date</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={task.start} onSelect={(date) => date && handleUpdateTask(task.id, 'start', date)} initialFocus />
-                                    </PopoverContent>
-                                </Popover>
-                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !task.end && "text-muted-foreground", task.type === 'milestone' && 'opacity-50 cursor-not-allowed')} disabled={task.type === 'milestone'}>
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {task.end ? format(task.end, "PPP") : <span>Pick an end date</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={task.end} onSelect={(date) => date && handleUpdateTask(task.id, 'end', date)} initialFocus />
-                                    </PopoverContent>
-                                </Popover>
-                                 <Button variant="ghost" size="icon" onClick={() => handleRemoveTask(task.id)}>
-                                     <Trash2 className="h-4 w-4" />
-                                 </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor={`progress-${task.id}`}>Progress: {task.progress}%</Label>
-                                    <Slider id={`progress-${task.id}`} value={[task.progress]} onValueChange={([v]) => handleUpdateTask(task.id, 'progress', v)} max={100} step={5} />
-                                </div>
-                                <div className="space-y-2">
-                                     <Label htmlFor={`assignee-${task.id}`}>Assignee</Label>
-                                     <Input id={`assignee-${task.id}`} value={task.assignee || ''} onChange={e => handleUpdateTask(task.id, 'assignee', e.target.value)} placeholder="e.g. Jane Doe" />
-                                </div>
-                                 <div className="space-y-2">
-                                     <Label htmlFor={`dependencies-${task.id}`}>Dependencies (IDs)</Label>
-                                     <Input id={`dependencies-${task.id}`} value={task.dependencies.join(', ')} onChange={e => handleUpdateTask(task.id, 'dependencies', e.target.value)} placeholder="e.g. 1, 2" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                 <div className="flex gap-2 pt-4">
-                    <Input
-                        value={newTaskName}
-                        onChange={e => setNewTaskName(e.target.value)}
-                        placeholder="Add a new task name..."
-                        onKeyDown={e => e.key === 'Enter' && handleAddTask()}
-                    />
-                    <Button onClick={handleAddTask}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Task
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <CardTitle>Timeline</CardTitle>
-                  <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full sm:w-auto">
-                    <TabsList>
-                      <TabsTrigger value="day">Day</TabsTrigger>
-                      <TabsTrigger value="week">Week</TabsTrigger>
-                      <TabsTrigger value="month">Month</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
+                <CardTitle>Project Timeline</CardTitle>
             </CardHeader>
             <CardContent>
-                <GanttDisplay tasks={tasks} view={view} />
+                 <GanttDisplay 
+                    tasks={tasks} 
+                    view={view} 
+                    onUpdateTask={handleUpdateTask} 
+                    onRemoveTask={handleRemoveTask}
+                    onAddTask={handleAddTask}
+                />
             </CardContent>
         </Card>
     </div>
