@@ -2,19 +2,21 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth } from 'date-fns';
+import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, max as maxDate } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentDialog } from '@/components/dashboard/payment-dialog';
 import { SuccessDialog } from '@/components/dashboard/success-dialog';
 import Xarrow, { Xwrapper } from 'react-xarrows';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type TaskType = 'task' | 'milestone';
 
@@ -41,7 +43,69 @@ const COLORS = [
   "bg-teal-500/80",
 ];
 
-const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; }) => {
+const findCriticalPath = (tasks: Task[]): Set<number> => {
+    if (!tasks || tasks.length === 0) {
+        return new Set();
+    }
+
+    const taskMap = new Map<number, Task>(tasks.map(task => [task.id, task]));
+    const memo = new Map<number, { path: number[]; endDate: Date }>();
+
+    const getTaskDuration = (task: Task) => differenceInDays(task.end, task.start);
+
+    function findLongestPath(taskId: number): { path: number[]; endDate: Date } {
+        if (memo.has(taskId)) {
+            return memo.get(taskId)!;
+        }
+
+        const task = taskMap.get(taskId);
+        if (!task) {
+            return { path: [], endDate: new Date(0) };
+        }
+
+        const dependents = tasks.filter(t => t.dependencies.includes(taskId));
+        if (dependents.length === 0) {
+            return { path: [taskId], endDate: task.end };
+        }
+
+        let longestSubPath: number[] = [];
+        let maxEndDate = new Date(0);
+
+        dependents.forEach(dependent => {
+            const { path: subPath, endDate: subEndDate } = findLongestPath(dependent.id);
+            if (subEndDate > maxEndDate) {
+                maxEndDate = subEndDate;
+                longestSubPath = subPath;
+            }
+        });
+
+        const result = {
+            path: [taskId, ...longestSubPath],
+            endDate: maxEndDate,
+        };
+        
+        memo.set(taskId, result);
+        return result;
+    }
+
+    let criticalPath: number[] = [];
+    let finalEndDate = new Date(0);
+
+    // Find starting nodes (no dependencies)
+    const startNodes = tasks.filter(t => t.dependencies.length === 0);
+    startNodes.forEach(startNode => {
+        const { path, endDate } = findLongestPath(startNode.id);
+        if (endDate > finalEndDate) {
+            finalEndDate = endDate;
+            criticalPath = path;
+        }
+    });
+
+    return new Set(criticalPath);
+};
+
+
+const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; criticalPath: Set<number>; }) => {
     const [newTaskName, setNewTaskName] = useState('');
     const gridRef = useRef<HTMLDivElement>(null);
     
@@ -119,7 +183,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                 duration = 0;
         }
         
-        return { offset, duration };
+        return { offset: Math.max(0, offset), duration };
     }
 
   return (
@@ -129,7 +193,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                 {/* Header */}
                 <div className="sticky top-0 z-20 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
                 {timelineHeaders.map((header, index) => (
-                    <div key={index} className="sticky top-0 z-20 border-b border-l p-2 text-center text-xs font-medium">
+                    <div key={index} className="sticky top-0 z-20 border-b border-r p-2 text-center text-xs font-medium">
                         {header.label}
                     </div>
                 ))}
@@ -138,6 +202,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                 {tasks.map((task, index) => {
                     const { offset, duration } = getTaskPosition(task);
                     const isMilestone = task.type === 'milestone';
+                    const isCritical = criticalPath.has(task.id);
                     return (
                         <React.Fragment key={task.id}>
                             <div className="sticky left-0 z-10 truncate border-b border-r bg-card p-2 text-sm h-12 flex items-center justify-between group" title={task.name}>
@@ -150,7 +215,9 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                                 <div className="relative h-12">
                                 <div
                                     id={`task-${task.id}`}
-                                    className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length])}
+                                    className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length], {
+                                        "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
+                                    })}
                                     style={{ 
                                         left: `calc(${(offset / timelineHeaders.length) * 100}% + 4px)`,
                                         width: `calc(${(duration / timelineHeaders.length) * 100}% - 8px)`,
@@ -186,6 +253,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
             task.dependencies.map(depId => {
                 const startTaskExists = tasks.some(t => t.id === depId);
                 if (!startTaskExists) return null;
+                const isCritical = criticalPath.has(task.id) && criticalPath.has(depId);
                 return (
                  <Xarrow
                     key={`${depId}-${task.id}`}
@@ -193,8 +261,8 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                     end={`task-${task.id}`}
                     startAnchor="right"
                     endAnchor="left"
-                    color="hsl(var(--primary))"
-                    strokeWidth={1.5}
+                    color={isCritical ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                    strokeWidth={isCritical ? 2.5 : 1.5}
                     path="grid"
                     headSize={4}
                     zIndex={10}
@@ -225,7 +293,7 @@ const getTemplates = () => {
                 { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2] },
                 { id: 4, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [3], assignee: 'FE Devs' },
                 { id: 5, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [3], assignee: 'BE Devs' },
-                { id: 6, name: 'API Integration', start: addDays(today, 46), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
+                { id: 6, name: 'API Integration', start: addDays(today, 51), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
                 { id: 7, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [6] },
                 { id: 8, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [7] },
             ],
@@ -251,6 +319,11 @@ export default function GanttPage() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [view, setView] = useState<View>('week');
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
+  const [showCriticalPath, setShowCriticalPath] = useState(false);
+
+  const criticalPath = useMemo(() => {
+    return showCriticalPath ? findCriticalPath(tasks) : new Set<number>();
+  }, [tasks, showCriticalPath]);
 
    useEffect(() => {
     // Initialize templates on the client-side to avoid hydration errors with dates
@@ -342,7 +415,7 @@ export default function GanttPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart Maker</h1>
             <p className="text-muted-foreground">Plan and visualize your project timeline with advanced features.</p>
           </div>
-           <div className="flex items-center gap-2">
+           <div className="flex flex-wrap items-center gap-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" disabled={!templates}>
@@ -363,6 +436,10 @@ export default function GanttPage() {
                         <TabsTrigger value="month">Month</TabsTrigger>
                     </TabsList>
                 </Tabs>
+                <div className="flex items-center space-x-2">
+                    <Switch id="critical-path" checked={showCriticalPath} onCheckedChange={setShowCriticalPath} />
+                    <Label htmlFor="critical-path">Show Critical Path</Label>
+                </div>
            </div>
         </div>
         
@@ -371,6 +448,7 @@ export default function GanttPage() {
             view={view}
             onAddTask={handleAddTask}
             onDeleteTask={handleDeleteTask}
+            criticalPath={criticalPath}
         />
     </div>
   );
