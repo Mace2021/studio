@@ -6,19 +6,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, isSameDay } from 'date-fns';
-import { Plus, Trash2, CalendarIcon, Crown, Sparkles, Diamond } from 'lucide-react';
+import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth } from 'date-fns';
+import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentDialog } from '@/components/dashboard/payment-dialog';
 import { SuccessDialog } from '@/components/dashboard/success-dialog';
 import Xarrow, { Xwrapper } from 'react-xarrows';
-import { Label } from '@/components/ui/label';
 
 type TaskType = 'task' | 'milestone';
 
@@ -45,7 +40,7 @@ const COLORS = [
   "bg-teal-500/80",
 ];
 
-const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { tasks: Task[]; view: View; onUpdateTask: (id: number, field: keyof Task, value: any) => void; onRemoveTask: (id: number) => void; onAddTask: (name: string) => void; }) => {
+const GanttDisplay = ({ tasks, view, onAddTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; }) => {
     const taskRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
     const [newTaskName, setNewTaskName] = useState('');
 
@@ -66,7 +61,7 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
     if (tasks.length === 0) {
         return (
             <div className="flex h-48 items-center justify-center rounded-md border-2 border-dashed">
-                <p className="text-muted-foreground">Add tasks to see your Gantt chart.</p>
+                <p className="text-muted-foreground">Add a task or select a template to begin.</p>
             </div>
         );
     }
@@ -75,10 +70,9 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
 
   const timelineHeaders = useMemo(() => {
     const headers = [];
-    let current = startDate;
     if (view === 'day') {
         const totalDays = differenceInDays(endDate, startDate) + 1;
-        for (let i = 0; i < totalDays; i++) {
+        for (let i = 0; i <= totalDays; i++) {
             headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
         }
     } else if (view === 'week') {
@@ -105,12 +99,12 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
     }
     if (view === 'week') {
         const offset = differenceInWeeks(task.start, startDate);
-        const duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInWeeks(task.end, task.start) + 1);
+        const duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start));
         return { offset, duration };
     }
     if (view === 'month') {
         const offset = differenceInMonths(task.start, startDate);
-        const duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
+        const duration = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
         return { offset, duration };
     }
     return { offset: 0, duration: 0};
@@ -118,12 +112,12 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
 
   return (
     <Xwrapper>
-        <div className="space-y-2 overflow-x-auto relative border rounded-md">
+        <div className="space-y-2 overflow-x-auto relative border rounded-md bg-card">
             {/* Header */}
             <div className="grid sticky top-0 z-20 bg-muted/50" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
                 <div className="sticky left-0 z-10 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
-                 {timelineHeaders.map(header => (
-                     <div key={header.label} className="border-b p-2 text-center text-xs font-medium">
+                 {timelineHeaders.map((header, index) => (
+                     <div key={index} className="border-b border-l p-2 text-center text-xs font-medium">
                          {header.label}
                      </div>
                  ))}
@@ -135,28 +129,46 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
                     const isMilestone = task.type === 'milestone';
                     return (
                         <div key={task.id} className="grid items-center h-12 border-b" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                            <div className="sticky left-0 z-10 truncate border-r bg-background p-2 text-sm h-full flex items-center" title={task.name}>{task.name}</div>
-                            <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${duration}` }} className="px-1 h-full flex items-center">
+                            <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center" title={task.name}>{task.name}</div>
+                            <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${Math.max(1, duration)}` }} className="px-1 h-full flex items-center">
                                 <div
                                     id={`task-${task.id}`}
                                     ref={el => taskRefs.current.set(task.id, el)}
                                     className={cn("h-8 flex items-center justify-between px-2 rounded-md text-white text-xs truncate relative", COLORS[index % COLORS.length])}
                                     style={{ width: isMilestone ? '2rem' : '100%', transform: isMilestone ? 'rotate(45deg)' : 'none' }}
                                 >
-                                     {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-md" style={{ width: `${task.progress}%` }}></div>}
-                                     <span className="truncate z-10" style={{ transform: isMilestone ? 'rotate(-45deg)' : 'none' }}>{!isMilestone ? task.name : ''}</span>
+                                     {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-l-md" style={{ width: `${task.progress}%` }}></div>}
+                                     <span className="truncate z-10 px-1" style={{ transform: isMilestone ? 'rotate(-45deg)' : 'none' }}>{!isMilestone ? task.name : ''}</span>
                                      {task.assignee && !isMilestone && (
-                                         <span className="text-xs ml-2 bg-black/20 px-1 rounded-full z-10">{task.assignee}</span>
+                                         <span className="text-xs ml-2 bg-black/20 px-1.5 py-0.5 rounded-full z-10">{task.assignee}</span>
                                      )}
                                 </div>
                             </div>
                         </div>
                     )
                 })}
+                 <div className="grid items-center h-12" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
+                    <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center">
+                         <div className="flex gap-2 w-full">
+                            <input
+                                value={newTaskName}
+                                onChange={e => setNewTaskName(e.target.value)}
+                                placeholder="Add a new task..."
+                                className="bg-transparent border-none focus:outline-none w-full text-sm"
+                                onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         {tasks.map(task => 
-            task.dependencies.map(depId => (
+            task.dependencies.map(depId => {
+                const startTask = tasks.find(t => t.id === depId);
+                const endTask = task;
+                if (!startTask || !endTask) return null;
+
+                return (
                  <Xarrow
                     key={`${depId}-${task.id}`}
                     start={`task-${depId}`}
@@ -169,33 +181,59 @@ const GanttDisplay = ({ tasks, view, onUpdateTask, onRemoveTask, onAddTask }: { 
                     headSize={4}
                     zIndex={10}
                  />
-            ))
+                )
+            })
         )}
-        <div className="flex gap-2 pt-4">
-            <Input
-                value={newTaskName}
-                onChange={e => setNewTaskName(e.target.value)}
-                placeholder="Add a new task name..."
-                onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
-            />
-            <Button onClick={handleAddTaskClick}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Task
-            </Button>
-        </div>
     </Xwrapper>
   );
 };
 
+const templates = {
+    q4Project: (): Task[] => {
+        const year = new Date().getFullYear();
+        return [
+            { id: 1, name: 'Q4 Planning', start: new Date(year, 9, 1), end: new Date(year, 9, 5), type: 'task', progress: 100, dependencies: [], assignee: 'Manager' },
+            { id: 2, name: 'Feature A Dev', start: new Date(year, 9, 6), end: new Date(year, 9, 31), type: 'task', progress: 80, dependencies: [1], assignee: 'Dev Team' },
+            { id: 3, name: 'Feature B Dev', start: new Date(year, 10, 1), end: new Date(year, 10, 20), type: 'task', progress: 40, dependencies: [1], assignee: 'Dev Team' },
+            { id: 4, name: 'Mid-Q Review', start: new Date(year, 10, 21), end: new Date(year, 10, 21), type: 'milestone', progress: 100, dependencies: [2,3] },
+            { id: 5, name: 'Testing & QA', start: new Date(year, 10, 22), end: new Date(year, 11, 10), type: 'task', progress: 20, dependencies: [4], assignee: 'QA Team' },
+            { id: 6, name: 'Deployment', start: new Date(year, 11, 15), end: new Date(year, 11, 15), type: 'milestone', progress: 0, dependencies: [5] },
+            { id: 7, name: 'Holiday Code Freeze', start: new Date(year, 11, 20), end: new Date(year, 11, 31), type: 'task', progress: 10, dependencies: [6] },
+        ];
+    },
+    projectDevelopment: (): Task[] => {
+        const today = new Date();
+        return [
+            { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], assignee: 'Analyst' },
+            { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], assignee: 'Designer' },
+            { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2] },
+            { id: 4, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [3], assignee: 'FE Devs' },
+            { id: 5, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [3], assignee: 'BE Devs' },
+            { id: 6, name: 'API Integration', start: addDays(today, 46), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
+            { id: 7, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [6] },
+            { id: 8, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [7] },
+        ];
+    },
+    eventPlanning: (): Task[] => {
+        const today = new Date();
+        return [
+            { id: 1, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], assignee: 'Coordinator' },
+            { id: 2, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [1] },
+            { id: 3, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [2], assignee: 'Coordinator' },
+            { id: 4, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [3], assignee: 'Logistics' },
+            { id: 5, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [2], assignee: 'Marketing' },
+            { id: 6, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [4, 5] },
+            { id: 7, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [6] },
+            { id: 8, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [7] },
+        ];
+    },
+};
+
+
 export default function GanttPage() {
   const { user, isSubscribed, setSubscribed } = useAuth();
   const router = useRouter();
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: 1, name: 'Planning', start: new Date(), end: addDays(new Date(), 4), type: 'task', progress: 80, dependencies: [], assignee: 'Alice' },
-    { id: 2, name: 'Design Phase', start: addDays(new Date(), 5), end: addDays(new Date(), 10), type: 'task', progress: 50, dependencies: [1], assignee: 'Bob' },
-    { id: 3, name: 'Initial Design Review', start: addDays(new Date(), 11), end: addDays(new Date(), 11), type: 'milestone', progress: 100, dependencies: [2] },
-    { id: 4, name: 'Development', start: addDays(new Date(), 12), end: addDays(new Date(), 22), type: 'task', progress: 25, dependencies: [3], assignee: 'Charlie' },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [view, setView] = useState<View>('week');
@@ -210,26 +248,6 @@ export default function GanttPage() {
       ...tasks,
       { id: newId, name, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], assignee: '' },
     ]);
-  };
-
-  const handleUpdateTask = (id: number, field: keyof Task, value: any) => {
-    setTasks(tasks.map(t => {
-        if (t.id === id) {
-            const updatedTask = { ...t, [field]: value };
-            if (field === 'type' && value === 'milestone') {
-                updatedTask.end = updatedTask.start;
-            }
-            if (field === 'dependencies') {
-              updatedTask.dependencies = value.split(',').map((s: string) => Number(s.trim())).filter(Boolean);
-            }
-            return updatedTask;
-        }
-        return t;
-    }));
-  };
-
-  const handleRemoveTask = (id: number) => {
-    setTasks(tasks.filter(t => t.id !== id));
   };
   
   const handleSubscribeClick = () => {
@@ -246,6 +264,10 @@ export default function GanttPage() {
       }
       setIsPaymentDialogOpen(false);
       setIsSuccessDialogOpen(true);
+  }
+
+  const handleSelectTemplate = (template: 'q4Project' | 'projectDevelopment' | 'eventPlanning') => {
+    setTasks(templates[template]());
   }
 
   if (!user || !isSubscribed) {
@@ -293,29 +315,35 @@ export default function GanttPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart Maker</h1>
             <p className="text-muted-foreground">Plan and visualize your project timeline with advanced features.</p>
           </div>
-          <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
-            <TabsList>
-                <TabsTrigger value="day">Day</TabsTrigger>
-                <TabsTrigger value="week">Week</TabsTrigger>
-                <TabsTrigger value="month">Month</TabsTrigger>
-            </TabsList>
-          </Tabs>
+           <div className="flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Templates
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSelectTemplate('q4Project')}>Q4 Project Schedule</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectTemplate('projectDevelopment')}>Project Development Timeline</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectTemplate('eventPlanning')}>Event Planning</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
+                    <TabsList>
+                        <TabsTrigger value="day">Day</TabsTrigger>
+                        <TabsTrigger value="week">Week</TabsTrigger>
+                        <TabsTrigger value="month">Month</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+           </div>
         </div>
         
-        <Card>
-            <CardHeader>
-                <CardTitle>Project Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <GanttDisplay 
-                    tasks={tasks} 
-                    view={view} 
-                    onUpdateTask={handleUpdateTask} 
-                    onRemoveTask={handleRemoveTask}
-                    onAddTask={handleAddTask}
-                />
-            </CardContent>
-        </Card>
+        <GanttDisplay 
+            tasks={tasks} 
+            view={view}
+            onAddTask={handleAddTask}
+        />
     </div>
   );
 }
