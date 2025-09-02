@@ -311,7 +311,10 @@ export default function GanttPage() {
   };
   
   const handleDeleteTask = (id: number) => {
-      setTasks(currentTasks => currentTasks.filter(task => task.id !== id));
+      setTasks(currentTasks => currentTasks.filter(task => task.id !== id).map(task => ({
+          ...task,
+          dependencies: task.dependencies.filter(depId => depId !== id)
+      })));
   }
   
   const handleSubscribeClick = () => {
