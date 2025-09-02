@@ -41,62 +41,47 @@ const COLORS = [
 ];
 
 const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; }) => {
-    const taskRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
     const [newTaskName, setNewTaskName] = useState('');
     const gridRef = useRef<HTMLDivElement>(null);
-    const [timelineHeaders, setTimelineHeaders] = useState<{label: string, start: Date}[]>([]);
-    const [startDate, setStartDate] = useState<Date | null>(null);
-
-    useEffect(() => {
-        taskRefs.current.clear();
-        tasks.forEach(task => {
-            taskRefs.current.set(task.id, null);
-        });
-    }, [tasks]);
-
-    useEffect(() => {
-        if (tasks.length === 0) {
-            const today = new Date();
-            setStartDate(startOfWeek(today));
-            return;
-        }
-        const minDate = new Date(Math.min(...tasks.map(t => t.start.getTime())));
-        setStartDate(startOfWeek(minDate));
-    }, [tasks]);
     
-    useEffect(() => {
-        if (!startDate) {
-            setTimelineHeaders([]);
-            return;
-        };
+    const [startDate, setStartDate] = useState<Date>(() => startOfWeek(new Date()));
 
+    useEffect(() => {
+        if (tasks.length > 0) {
+            const minDate = new Date(Math.min(...tasks.map(t => t.start.getTime())));
+            setStartDate(startOfWeek(minDate));
+        }
+    }, [tasks]);
+
+    const timelineHeaders = useMemo(() => {
+        const headers = [];
+        if (!startDate) return [];
+        
         const endDate = tasks.length > 0 
             ? new Date(Math.max(...tasks.map(t => t.end.getTime())))
-            : addDays(startDate, view === 'day' ? 30 : (view === 'week' ? 12*7 : 12*30)); // Default timeline length if no tasks
+            : addDays(startDate, view === 'day' ? 30 : (view === 'week' ? 12*7 : 12*30));
 
-        const headers = [];
         if (view === 'day') {
-            const totalDays = differenceInDays(endDate, startDate) + 1;
+            const totalDays = differenceInDays(endDate, startDate) + 10;
             for (let i = 0; i <= totalDays; i++) {
                 headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
             }
         } else if (view === 'week') {
-            let weekStart = startOfWeek(startDate);
-            const endOfWeek = startOfWeek(endDate);
-            while(weekStart <= endOfWeek) {
-                headers.push({ label: `Week of ${format(weekStart, 'MMM d')}`, start: weekStart });
-                weekStart = addDays(weekStart, 7);
+            let current = startOfWeek(startDate);
+            const end = addDays(endDate, 14);
+            while(current <= end) {
+                headers.push({ label: `Week of ${format(current, 'MMM d')}`, start: current });
+                current = addDays(current, 7);
             }
         } else if (view === 'month') {
-            let monthStart = startOfMonth(startDate);
-            const endOfMonth = startOfMonth(endDate);
-            while(monthStart <= endOfMonth) {
-                headers.push({ label: format(monthStart, 'MMMM yyyy'), start: monthStart });
-                monthStart = addDays(monthStart, getDaysInMonth(monthStart));
+            let current = startOfMonth(startDate);
+            const end = addDays(startOfMonth(endDate), 60);
+             while(current <= end) {
+                headers.push({ label: format(current, 'MMMM yyyy'), start: current });
+                current = addDays(current, getDaysInMonth(current) + 1);
             }
         }
-        setTimelineHeaders(headers);
-
+        return headers;
     }, [startDate, tasks, view]);
 
 
@@ -107,115 +92,99 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
         }
     }
 
-    if (tasks.length === 0 && !newTaskName) {
-        return (
-             <div className="flex h-96 items-center justify-center rounded-md border-2 border-dashed">
-                <div className="text-center">
-                    <p className="text-muted-foreground">Your Gantt chart is empty.</p>
-                    <p className="text-sm text-muted-foreground mb-4">Select a template or add your first task below to begin.</p>
-                     <div className="w-72 mx-auto">
-                        <input
-                            value={newTaskName}
-                            onChange={e => setNewTaskName(e.target.value)}
-                            placeholder="Type your first task and press Enter..."
-                            className="bg-background border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                            onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
-                        />
-                    </div>
-                </div>
-            </div>
-        );
+    const getTaskPosition = (task: Task) => {
+        if (!startDate) return { offset: 0, duration: 0 };
+        let offset, duration;
+        const colWidth = 1; // each column is 1fr
+        
+        switch (view) {
+            case 'day':
+                offset = differenceInDays(task.start, startDate);
+                duration = task.type === 'milestone' ? colWidth : Math.max(1, differenceInDays(task.end, task.start) + 1);
+                break;
+            case 'week':
+                offset = differenceInWeeks(task.start, startDate, { weekStartsOn: 1 });
+                duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start, { weekStartsOn: 1 }) + 1);
+                break;
+            case 'month':
+                offset = differenceInMonths(task.start, startDate);
+                 const endOfMonth = startOfMonth(task.end);
+                const startOfMonthVal = startOfMonth(task.start);
+                const monthDiff = differenceInMonths(endOfMonth, startOfMonthVal);
+                duration = task.type === 'milestone' ? 0.1 : Math.max(1, monthDiff + 1);
+                break;
+            default:
+                offset = 0;
+                duration = 0;
+        }
+        
+        return { offset, duration };
     }
-  
-
-  const getTaskPosition = (task: Task) => {
-    if (!startDate) return { offset: 0, duration: 0 };
-    let offset, duration;
-    
-    switch (view) {
-        case 'day':
-            offset = differenceInDays(task.start, startDate);
-            duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
-            break;
-        case 'week':
-            offset = differenceInWeeks(task.start, startDate);
-            duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start) + 1);
-            break;
-        case 'month':
-            offset = differenceInMonths(task.start, startDate);
-            duration = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start) + 1);
-            break;
-        default:
-            offset = 0;
-            duration = 0;
-    }
-    
-    return { offset, duration };
-  }
 
   return (
     <Xwrapper>
-        <div ref={gridRef} className="space-y-2 overflow-x-auto relative border rounded-md bg-card">
-            {/* Header */}
-            <div className="grid sticky top-0 z-20 bg-muted/50" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                <div className="sticky left-0 z-10 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
-                 {timelineHeaders.map((header, index) => (
-                     <div key={index} className="border-b border-l p-2 text-center text-xs font-medium">
-                         {header.label}
-                     </div>
-                 ))}
-            </div>
-            {/* Rows */}
-            <div className="relative">
+        <div className="overflow-x-auto border rounded-md bg-card">
+            <div ref={gridRef} className="grid relative" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`, minWidth: `${250 + timelineHeaders.length * 100}px` }}>
+                {/* Header */}
+                <div className="sticky top-0 z-20 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
+                {timelineHeaders.map((header, index) => (
+                    <div key={index} className="sticky top-0 z-20 border-b border-l p-2 text-center text-xs font-medium">
+                        {header.label}
+                    </div>
+                ))}
+
+                {/* Rows */}
                 {tasks.map((task, index) => {
                     const { offset, duration } = getTaskPosition(task);
                     const isMilestone = task.type === 'milestone';
                     return (
-                        <div key={task.id} className="grid items-center h-12 border-b group" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                            <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center justify-between" title={task.name}>
+                        <React.Fragment key={task.id}>
+                            <div className="sticky left-0 z-10 truncate border-b border-r bg-card p-2 text-sm h-12 flex items-center justify-between group" title={task.name}>
                                 {task.name}
                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
                                     <Plus className="h-4 w-4 rotate-45" />
                                 </Button>
                             </div>
-                            <div style={{ gridColumnStart: Math.max(offset, 0) + 2, gridColumnEnd: `span ${Math.max(1, duration)}` }} className="px-1 h-full flex items-center">
+                            <div className="border-b" style={{ gridColumn: `2 / span ${timelineHeaders.length}`}}>
+                                <div className="relative h-12">
                                 <div
                                     id={`task-${task.id}`}
-                                    ref={el => taskRefs.current.set(task.id, el)}
-                                    className={cn("h-8 flex items-center justify-between px-2 rounded-md text-white text-xs truncate relative", COLORS[index % COLORS.length])}
-                                    style={{ width: isMilestone ? '2rem' : '100%', transform: isMilestone ? 'rotate(45deg)' : 'none' }}
+                                    className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length])}
+                                    style={{ 
+                                        left: `calc(${(offset / timelineHeaders.length) * 100}% + 4px)`,
+                                        width: `calc(${(duration / timelineHeaders.length) * 100}% - 8px)`,
+                                        transform: isMilestone ? 'rotate(45deg)' : 'none',
+                                        height: isMilestone ? '2rem' : '2rem',
+                                        width: isMilestone ? '2rem' : `calc(${(duration / timelineHeaders.length) * 100}% - 8px)`,
+                                    }}
                                 >
-                                     {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-l-md" style={{ width: `${task.progress}%` }}></div>}
-                                     <span className="truncate z-10 px-1" style={{ transform: isMilestone ? 'rotate(-45deg)' : 'none' }}>{!isMilestone ? task.name : ''}</span>
-                                     {task.assignee && !isMilestone && (
-                                         <span className="text-xs ml-2 bg-black/20 px-1.5 py-0.5 rounded-full z-10">{task.assignee}</span>
-                                     )}
+                                    {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-l-md" style={{ width: `${task.progress}%` }}></div>}
+                                    <span className="truncate z-10 px-1" style={{ transform: isMilestone ? 'rotate(-45deg)' : 'none' }}>{!isMilestone ? task.name : ''}</span>
+                                    {task.assignee && !isMilestone && (
+                                        <span className="text-xs ml-2 bg-black/20 px-1.5 py-0.5 rounded-full z-10">{task.assignee}</span>
+                                    )}
+                                </div>
                                 </div>
                             </div>
-                        </div>
+                        </React.Fragment>
                     )
                 })}
-                 <div className="grid items-center h-12" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`}}>
-                    <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-full flex items-center">
-                         <div className="flex gap-2 w-full">
-                            <input
-                                value={newTaskName}
-                                onChange={e => setNewTaskName(e.target.value)}
-                                placeholder="Add a new task..."
-                                className="bg-transparent border-none focus:outline-none w-full text-sm"
-                                onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
-                            />
-                        </div>
-                    </div>
-                </div>
+                {/* Add Task Row */}
+                 <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-12 flex items-center">
+                     <input
+                        value={newTaskName}
+                        onChange={e => setNewTaskName(e.target.value)}
+                        placeholder="Add a new task..."
+                        className="bg-transparent border-none focus:outline-none w-full text-sm"
+                        onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+                    />
+                 </div>
             </div>
         </div>
         {tasks.map(task => 
             task.dependencies.map(depId => {
-                const startTask = tasks.find(t => t.id === depId);
-                const endTask = task;
-                if (!startTask || !endTask || !gridRef.current) return null;
-
+                const startTaskExists = tasks.some(t => t.id === depId);
+                if (!startTaskExists) return null;
                 return (
                  <Xarrow
                     key={`${depId}-${task.id}`}
@@ -228,19 +197,6 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask }: { tasks: Task[];
                     path="grid"
                     headSize={4}
                     zIndex={10}
-                    passProps={{
-                       SVGcanvasProps: {
-                          style: {
-                             position: 'absolute',
-                             top: 0,
-                             left: 0,
-                             pointerEvents: 'none',
-                             overflow: 'visible',
-                             width: gridRef.current?.scrollWidth,
-                             height: gridRef.current?.scrollHeight,
-                          }
-                       }
-                    }}
                  />
                 )
             })
@@ -296,6 +252,7 @@ export default function GanttPage() {
   const [templates, setTemplates] = useState(getTemplates());
 
    useEffect(() => {
+    // Initialize templates on the client-side to avoid hydration errors with dates
     setTemplates(getTemplates());
   }, []);
 
@@ -396,19 +353,6 @@ export default function GanttPage() {
                         <DropdownMenuItem onClick={() => handleSelectTemplate('eventPlanning')}>Event Planning</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" disabled>
-                            Advanced
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem disabled>Show Critical Path</DropdownMenuItem>
-                        <DropdownMenuItem disabled>Manage Resources</DropdownMenuItem>
-                        <DropdownMenuItem disabled>Task Costs</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
                 <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
                     <TabsList>
                         <TabsTrigger value="day">Day</TabsTrigger>
@@ -428,4 +372,6 @@ export default function GanttPage() {
     </div>
   );
 }
+    
+
     
