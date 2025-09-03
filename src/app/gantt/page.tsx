@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, max as maxDate } from 'date-fns';
@@ -378,6 +378,21 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
     </TooltipProvider>
 );
 
+const DisabledMenuItem = ({ title }: { title: string }) => (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <DropdownMenuItem disabled>
+                    {title}
+                </DropdownMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="start">
+                <p>This feature is planned for a future update.</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
+)
+
 
 export default function GanttPage() {
   const { user, isSubscribed, setSubscribed } = useAuth();
@@ -486,6 +501,26 @@ export default function GanttPage() {
            <div className="flex flex-wrap items-center gap-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Features
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                         <DropdownMenuLabel>Gantt Chart Features</DropdownMenuLabel>
+                         <DropdownMenuItem onClick={() => setIsPaymentDialogOpen(true)}>
+                            Exporting to PDF
+                         </DropdownMenuItem>
+                         <DropdownMenuSeparator />
+                         <DisabledMenuItem title="Drag and Drop Task Assigning" />
+                         <DisabledMenuItem title="Task Grouping" />
+                         <DisabledMenuItem title="Collaboration Tools" />
+                         <DisabledMenuItem title="Rights Management" />
+                         <DisabledMenuItem title="Reminders" />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                         <Button variant="outline" disabled={!templates}>
                             Templates
                             <ChevronDown className="ml-2 h-4 w-4" />
@@ -534,6 +569,7 @@ export default function GanttPage() {
     </div>
   );
 }
+    
     
 
     
