@@ -20,7 +20,7 @@ import {
 
 const links = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/gantt-ai", label: "AI Gantt Chart", icon: Bot },
+  { href: "/gantt", label: "Gantt Chart", icon: GanttChartSquare },
   { href: "/about", label: "About", icon: Info },
   { href: "/contact", label: "Contact", icon: Mail },
   { href: "/tutorial", label: "Tutorial", icon: Lightbulb },

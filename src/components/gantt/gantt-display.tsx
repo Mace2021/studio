@@ -3,25 +3,26 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth } from 'date-fns';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Xarrow, { Xwrapper } from 'react-xarrows';
 import type { Task } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 
 type View = 'day' | 'week' | 'month';
 
 const COLORS = [
-  "#3b82f6", // blue-500
-  "#10b981", // emerald-500
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#8b5cf6", // violet-500
+  "bg-sky-500",
+  "bg-blue-500",
+  "bg-indigo-500",
+  "bg-violet-500",
 ];
 
-export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }: { tasks: Task[]; view?: View; criticalPath: Set<number>; }) => {
-    const [view, setView] = useState<View>(initialView);
+
+export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; criticalPath: Set<number>; }) => {
+    const [newTaskName, setNewTaskName] = useState('');
 
     const processedTasks = useMemo(() => {
         const taskMap = new Map(tasks.map(t => [t.id, {...t, children: [] as Task[]}]));
@@ -72,7 +73,7 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
         const headers: { main: string, sub: string[] }[] = [];
         if (!startDate || !endDate) return [];
         let current: Date;
-        const finalDate = addDays(endDate, 7); // Add some buffer to the end
+        const finalDate = addDays(endDate, 7); 
 
         if (view === 'day') {
             current = startOfWeek(startDate);
@@ -95,10 +96,7 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                     weekStart = addDays(weekStart, 7);
                 }
                 headers.push({ main: monthName, sub: weekStarts });
-                current = addDays(startOfMonth(current), 35);
-                if (current.getMonth() === startOfMonth(current).getMonth()) {
-                  current.setDate(1); // prevent infinite loop
-                }
+                current = addDays(startOfMonth(addDays(current, 35)), 1);
             }
         } else if (view === 'month') {
             let currentYear = startDate.getFullYear();
@@ -113,6 +111,13 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
         }
         return headers;
     }, [startDate, endDate, view]);
+
+    const handleAddTaskClick = () => {
+        if (newTaskName.trim()) {
+            onAddTask(newTaskName);
+            setNewTaskName('');
+        }
+    }
 
     const getTaskPosition = (task: Task) => {
         if (!startDate) return { left: 0, width: 0 };
@@ -130,7 +135,7 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
             totalUnits = differenceInWeeks(finalDate, startDate);
             taskStartUnit = differenceInWeeks(task.start, startDate);
             taskDurationUnits = task.type === 'milestone' ? 0.2 : Math.max(0.2, differenceInWeeks(task.end, task.start));
-        } else { // month
+        } else { 
             totalUnits = differenceInMonths(finalDate, startDate);
             taskStartUnit = differenceInMonths(task.start, startDate);
             taskDurationUnits = task.type === 'milestone' ? 0.1 : Math.max(0.1, differenceInMonths(task.end, task.start));
@@ -147,19 +152,10 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
 
   return (
     <Xwrapper>
-        <div className="flex justify-end mb-4">
-            <Tabs value={view} onValueChange={(value) => setView(value as View)}>
-                <TabsList>
-                    <TabsTrigger value="day">Day</TabsTrigger>
-                    <TabsTrigger value="week">Week</TabsTrigger>
-                    <TabsTrigger value="month">Month</TabsTrigger>
-                </TabsList>
-            </Tabs>
-        </div>
         <div className="border rounded-lg bg-card overflow-hidden">
-            <div className="grid" style={{ gridTemplateColumns: `minmax(200px, 1.5fr) 4fr`}}>
+            <div className="grid" style={{ gridTemplateColumns: `minmax(250px, 1.5fr) 4fr`}}>
                 <div className="bg-muted/50 border-r">
-                    <div className="p-2 h-16 flex items-center font-semibold border-b text-sm">Tasks List</div>
+                    <div className="p-2 h-16 flex items-center font-semibold border-b text-sm">Tasks</div>
                 </div>
                 <div className="overflow-x-auto bg-muted/30">
                     <div className="sticky top-0 z-20 bg-card/90 backdrop-blur-sm">
@@ -186,51 +182,41 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                           title={task.name}
                         >
                             <span className={cn("truncate", {"font-semibold": task.type === 'group'})}>{task.name}</span>
+                             <Button variant="ghost" size="icon" className="h-6 w-6 mr-1 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
+                                <Plus className="h-4 w-4 rotate-45" />
+                            </Button>
                         </div>
                     ))}
+                     <div className="h-12 flex items-center p-2">
+                        <input
+                            value={newTaskName}
+                            onChange={e => setNewTaskName(e.target.value)}
+                            placeholder="+ Add new task"
+                            className="bg-transparent border-none focus:outline-none w-full text-sm placeholder:text-muted-foreground"
+                            onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+                        />
+                    </div>
                 </div>
-                <div className="overflow-x-auto overflow-y-auto" style={{maxHeight: '60vh'}}>
+                <div className="overflow-x-auto overflow-y-auto" style={{maxHeight: 'calc(60vh + 48px)'}}>
                     <div className="relative">
                         {/* Grid lines */}
-                        {timelineHeaders.map((header, i) => (
-                            <div key={i} className="absolute inset-0 grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(60px, 1fr))`}}>
-                                {header.sub.map((_, j) => (
-                                    <div key={j} className="border-r"></div>
-                                ))}
-                            </div>
-                        ))}
-                         {/* Project milestone line */}
-                        <div className="absolute top-2 left-0 right-0 h-4 flex items-center z-10">
-                            <div className="w-full h-0.5 bg-blue-500 relative">
-                                {processedTasks.filter(t => t.type === 'milestone').map(task => {
-                                    const { left } = getTaskPosition(task);
-                                    return (
-                                        <TooltipProvider key={task.id}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div 
-                                                        className="absolute w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" 
-                                                        style={{ left: `${left}%`, top: '2px' }}
-                                                    ></div>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{task.name}</p>
-                                                    <p>{format(task.start, 'MMM d, yyyy')}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )
-                                })}
-                            </div>
+                        <div className="absolute inset-0 grid grid-cols-1">
+                             {processedTasks.map((task) => (
+                                <div key={task.id} className="h-12 border-b"></div>
+                             ))}
                         </div>
-
-
+                         <div className="absolute inset-0 grid" style={{gridTemplateColumns: `repeat(${timelineHeaders[0]?.sub.length ?? 1}, minmax(60px, 1fr))`}}>
+                                {timelineHeaders[0]?.sub.map((_, j) => (
+                                    <div key={j} className="border-r h-full"></div>
+                                ))}
+                         </div>
+                        
                         {processedTasks.map((task, index) => {
                              const { left, width } = getTaskPosition(task);
                              const isMilestone = task.type === 'milestone';
                              const isCritical = criticalPath.has(task.id);
 
-                             if (task.type === 'group' || isMilestone) {
+                             if (task.type === 'group') {
                                 return <div key={task.id} className="h-12 border-b"></div>
                              }
                             
@@ -241,17 +227,19 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                                   <TooltipTrigger asChild>
                                   <div
                                       id={`task-bar-${task.id}`}
-                                      className={cn("absolute h-8 flex items-center rounded text-white text-xs truncate z-20", {
+                                      className={cn("absolute h-8 flex items-center rounded text-white text-xs truncate z-20", COLORS[index % COLORS.length], {
                                           "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
+                                          "!w-6 !h-6 transform rotate-45 !rounded-none": isMilestone,
+                                          "bg-opacity-50": task.type === 'group'
                                       })}
-                                      style={{ left: `${left}%`, width: `${width}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                                      style={{ left: `${left}%`, width: isMilestone ? '24px' : `${width}%` }}
                                   >
-                                      <div 
-                                        className="absolute top-0 left-0 h-full bg-black/20 rounded" 
-                                        style={{ width: `${task.progress}%` }}
-                                      ></div>
-                                      <span className="truncate z-10 px-2 font-medium">{task.name}</span>
-                                      {task.progress > 0 && <span className="absolute right-2 text-xs font-bold">{task.progress}%</span>}
+                                    {!isMilestone && (
+                                        <>
+                                        <div className="absolute top-0 left-0 h-full bg-black/30 rounded" style={{ width: `${task.progress}%` }}></div>
+                                        <span className="truncate z-10 px-2 font-medium">{task.name}</span>
+                                        </>
+                                      )}
                                   </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -259,7 +247,7 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                                       <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
                                       <p>End: {format(task.end, 'MMM d, yyyy')}</p>
                                       <p>Progress: {task.progress}%</p>
-                                      {isCritical && <p className="text-red-500 font-bold">Critical Path</p>}
+                                       {isCritical && <p className="text-red-500 font-bold">On Critical Path</p>}
                                   </TooltipContent>
                                   </Tooltip>
                                   </TooltipProvider>
@@ -284,12 +272,12 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                     end={`task-bar-${task.id}`}
                     startAnchor="right"
                     endAnchor="left"
-                    color={isCritical ? "#ef4444" : "#fb923c"}
+                    color={isCritical ? "#ef4444" : "hsl(var(--primary))"}
                     strokeWidth={isCritical ? 2 : 1.5}
                     path="grid"
                     gridBreak="20%"
                     headSize={5}
-                    zIndex={10}
+                    zIndex={30}
                  />
                 )
             })
