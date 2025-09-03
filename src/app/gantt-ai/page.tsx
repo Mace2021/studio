@@ -22,7 +22,7 @@ Project Start Date: August 1, 2024
 Tasks and Timeline:
 1. Market Research: 10 days
 2. Competitor Analysis: 5 days (Depends on Task 1)
-3. Develop Marketing Strategy: 7 days (Depends on Task 2)
+3. Develop Marketing Strategy: 7 days (Depends on Task 2, 48% complete)
 4. Create Content Briefs: 4 days (Depends on Task 3)
 5. Content Creation (Blog Posts, Social Media): 15 days (Depends on Task 4)
 6. Design Campaign Visuals: 8 days (Depends on Task 4)
@@ -165,49 +165,66 @@ export default function AiGanttPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Plan Prompt</CardTitle>
-          <CardDescription>
-            Use the template below to describe your project. The AI will parse the tasks, dependencies, and milestones to create a Gantt chart.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Enter your project plan here..."
-            rows={15}
-            className="font-mono text-sm"
-            disabled={isLoading}
-          />
-          <Button onClick={handleGenerateChart} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Generate Chart
-          </Button>
-        </CardContent>
-      </Card>
-      
-      {tasks.length > 0 && (
-          <Card>
-            <CardHeader>
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <CardTitle>Generated Gantt Chart</CardTitle>
-                    <div className="flex items-center space-x-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-4">
+            <Card>
+                <CardHeader>
+                <CardTitle>Project Plan Prompt</CardTitle>
+                <CardDescription>
+                    Use the template below to describe your project.
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Enter your project plan here..."
+                    rows={18}
+                    className="font-mono text-sm"
+                    disabled={isLoading}
+                />
+                <Button onClick={handleGenerateChart} disabled={isLoading} className="w-full">
+                    {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    Generate Chart
+                </Button>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Options</CardTitle>
+                </CardHeader>
+                <CardContent>
+                     <div className="flex items-center space-x-2">
                         <Switch id="critical-path" checked={showCriticalPath} onCheckedChange={setShowCriticalPath} />
                         <Label htmlFor="critical-path">Show Critical Path</Label>
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <GanttDisplay tasks={tasks} view="week" criticalPath={criticalPath} />
-            </CardContent>
-          </Card>
-      )}
+                </CardContent>
+            </Card>
+        </div>
+      
+        <div className="lg:col-span-2">
+            {tasks.length > 0 ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Generated Gantt Chart</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <GanttDisplay tasks={tasks} view="week" criticalPath={criticalPath} />
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card className="h-full flex items-center justify-center">
+                    <CardContent className="text-center">
+                        <p className="text-muted-foreground">Your generated chart will appear here.</p>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+      </div>
     </div>
   );
 }

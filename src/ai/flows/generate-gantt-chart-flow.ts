@@ -18,7 +18,7 @@ const GanttTaskSchema = z.object({
     start: z.string().describe("The calculated start date of the task in 'YYYY-MM-DD' format."),
     end: z.string().describe("The calculated end date of the task in 'YYYY-MM-DD' format."),
     type: z.enum(['task', 'milestone', 'group']).describe("The type of the item. Milestones are single-day events."),
-    progress: z.number().describe("The progress of the task, from 0 to 100. Default to 0."),
+    progress: z.number().describe("The progress of the task, from 0 to 100. Default to 0 unless specified."),
     dependencies: z.array(z.number()).describe("A list of task IDs that this task depends on."),
     parentId: z.nullable(z.number()).describe("The ID of the parent task if this is a sub-task.")
 });
@@ -48,7 +48,8 @@ Follow these instructions carefully:
     *   If a task has multiple dependencies, it should start after the latest-finishing predecessor.
 3.  **Assign IDs**: Assign a unique integer ID to each task, starting from 1, corresponding to its number in the user's list.
 4.  **Identify Milestones**: Tasks listed under "Key Milestones" should be of type 'milestone'. A milestone is a single-day event, so its start and end dates should be the same.
-5.  **Structure the Output**: Format the final output as a JSON object that strictly conforms to the provided output schema. Ensure all dates are in 'YYYY-MM-DD' format.
+5.  **Assign Progress**: If a task description includes a percentage, use that for the progress field. Otherwise, default to 0.
+6.  **Structure the Output**: Format the final output as a JSON object that strictly conforms to the provided output schema. Ensure all dates are in 'YYYY-MM-DD' format.
 
 User's Project Plan:
 \`\`\`

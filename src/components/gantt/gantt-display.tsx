@@ -13,10 +13,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 type View = 'day' | 'week' | 'month';
 
 const COLORS = [
-  "bg-sky-500",
-  "bg-blue-500",
-  "bg-indigo-500",
-  "bg-violet-500",
+  "#3b82f6", // blue-500
+  "#10b981", // emerald-500
+  "#ef4444", // red-500
+  "#f97316", // orange-500
+  "#8b5cf6", // violet-500
 ];
 
 export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }: { tasks: Task[]; view?: View; criticalPath: Set<number>; }) => {
@@ -156,18 +157,18 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
             </Tabs>
         </div>
         <div className="border rounded-lg bg-card overflow-hidden">
-            <div className="grid" style={{ gridTemplateColumns: `300px 1fr`}}>
+            <div className="grid" style={{ gridTemplateColumns: `minmax(200px, 1.5fr) 4fr`}}>
                 <div className="bg-muted/50 border-r">
-                    <div className="p-2 h-20 flex items-center font-semibold border-b">Tasks</div>
+                    <div className="p-2 h-16 flex items-center font-semibold border-b text-sm">Tasks List</div>
                 </div>
-                <div className="overflow-x-auto">
-                    <div className="sticky top-0 z-20 bg-card">
+                <div className="overflow-x-auto bg-muted/30">
+                    <div className="sticky top-0 z-20 bg-card/90 backdrop-blur-sm">
                     {timelineHeaders.map((header, i) => (
                         <div key={i} className="flex flex-col whitespace-nowrap">
-                            <div className="p-2 font-semibold text-center border-b">{header.main}</div>
-                            <div className="grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(80px, 1fr))`}}>
+                            <div className="p-2 font-semibold text-center border-b text-sm">{header.main}</div>
+                            <div className="grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(60px, 1fr))`}}>
                                 {header.sub.map((sub, j) => (
-                                    <div key={j} className="p-2 text-xs text-center border-b border-r text-muted-foreground">{sub}</div>
+                                    <div key={j} className="p-1.5 text-xs text-center border-b border-r text-muted-foreground">{sub}</div>
                                 ))}
                             </div>
                         </div>
@@ -180,45 +181,77 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                         <div
                           id={`task-name-${task.id}`}
                           key={task.id}
-                          className="h-10 flex items-center justify-between group text-sm border-b"
+                          className="h-12 flex items-center justify-between group text-sm border-b"
                           style={{ paddingLeft: `${(task as any).level * 1.5 + 0.5}rem`}}
                           title={task.name}
                         >
-                            <span className={cn("truncate", {"font-bold": task.type === 'group'})}>{task.name}</span>
+                            <span className={cn("truncate", {"font-semibold": task.type === 'group'})}>{task.name}</span>
                         </div>
                     ))}
                 </div>
                 <div className="overflow-x-auto overflow-y-auto" style={{maxHeight: '60vh'}}>
                     <div className="relative">
+                        {/* Grid lines */}
+                        {timelineHeaders.map((header, i) => (
+                            <div key={i} className="absolute inset-0 grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(60px, 1fr))`}}>
+                                {header.sub.map((_, j) => (
+                                    <div key={j} className="border-r"></div>
+                                ))}
+                            </div>
+                        ))}
+                         {/* Project milestone line */}
+                        <div className="absolute top-2 left-0 right-0 h-4 flex items-center z-10">
+                            <div className="w-full h-0.5 bg-blue-500 relative">
+                                {processedTasks.filter(t => t.type === 'milestone').map(task => {
+                                    const { left } = getTaskPosition(task);
+                                    return (
+                                        <TooltipProvider key={task.id}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div 
+                                                        className="absolute w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1/2 -translate-y-1/2" 
+                                                        style={{ left: `${left}%`, top: '2px' }}
+                                                    ></div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{task.name}</p>
+                                                    <p>{format(task.start, 'MMM d, yyyy')}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+
                         {processedTasks.map((task, index) => {
                              const { left, width } = getTaskPosition(task);
                              const isMilestone = task.type === 'milestone';
                              const isCritical = criticalPath.has(task.id);
 
-                             if (task.type === 'group') {
-                                return <div key={task.id} className="h-10 border-b"></div>
+                             if (task.type === 'group' || isMilestone) {
+                                return <div key={task.id} className="h-12 border-b"></div>
                              }
                             
                             return (
-                                <div key={task.id} className="h-10 border-b relative flex items-center">
+                                <div key={task.id} className="h-12 border-b relative flex items-center px-1">
                                   <TooltipProvider>
                                   <Tooltip>
                                   <TooltipTrigger asChild>
                                   <div
                                       id={`task-bar-${task.id}`}
-                                      className={cn("absolute h-6 flex items-center rounded-sm text-white text-xs truncate", COLORS[index % COLORS.length], {
+                                      className={cn("absolute h-8 flex items-center rounded text-white text-xs truncate z-20", {
                                           "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
-                                          "w-6 h-6 transform rotate-45 !rounded-none": isMilestone,
-                                          "bg-opacity-50": task.type === 'group'
                                       })}
-                                      style={{ left: `${left}%`, width: isMilestone ? '20px' : `${width}%` }}
+                                      style={{ left: `${left}%`, width: `${width}%`, backgroundColor: COLORS[index % COLORS.length] }}
                                   >
-                                      {!isMilestone && (
-                                        <>
-                                        <div className="absolute top-0 left-0 h-full bg-black/30 rounded-sm" style={{ width: `${task.progress}%` }}></div>
-                                        <span className="truncate z-10 px-2">{task.name}</span>
-                                        </>
-                                      )}
+                                      <div 
+                                        className="absolute top-0 left-0 h-full bg-black/20 rounded" 
+                                        style={{ width: `${task.progress}%` }}
+                                      ></div>
+                                      <span className="truncate z-10 px-2 font-medium">{task.name}</span>
+                                      {task.progress > 0 && <span className="absolute right-2 text-xs font-bold">{task.progress}%</span>}
                                   </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -226,6 +259,7 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                                       <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
                                       <p>End: {format(task.end, 'MMM d, yyyy')}</p>
                                       <p>Progress: {task.progress}%</p>
+                                      {isCritical && <p className="text-red-500 font-bold">Critical Path</p>}
                                   </TooltipContent>
                                   </Tooltip>
                                   </TooltipProvider>
@@ -250,9 +284,10 @@ export const GanttDisplay = ({ tasks, view: initialView = 'week', criticalPath }
                     end={`task-bar-${task.id}`}
                     startAnchor="right"
                     endAnchor="left"
-                    color={isCritical ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
+                    color={isCritical ? "#ef4444" : "#fb923c"}
                     strokeWidth={isCritical ? 2 : 1.5}
                     path="grid"
+                    gridBreak="20%"
                     headSize={5}
                     zIndex={10}
                  />
