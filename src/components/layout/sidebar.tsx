@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, Lightbulb, LogIn, UserPlus, LogOut, GanttChart } from "lucide-react";
+import { Home, Info, Mail, Lightbulb, LogIn, UserPlus, LogOut } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ import {
 
 const links = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/gantt", label: "Gantt Chart", icon: GanttChart },
   { href: "/about", label: "About", icon: Info },
   { href: "/contact", label: "Contact", icon: Mail },
   { href: "/tutorial", label: "Tutorial", icon: Lightbulb },
