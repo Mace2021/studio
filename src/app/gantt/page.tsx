@@ -19,7 +19,7 @@ import Xarrow, { Xwrapper } from 'react-xarrows';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
-type TaskType = 'task' | 'milestone';
+type TaskType = 'task' | 'milestone' | 'group';
 
 type Task = {
   id: number;
@@ -30,18 +30,16 @@ type Task = {
   progress: number; // 0-100
   dependencies: number[]; // Array of task IDs
   assignee?: string;
+  parentId?: number | null;
 };
 
 type View = 'day' | 'week' | 'month';
 
 const COLORS = [
-  "bg-blue-500/80",
-  "bg-green-500/80",
-  "bg-yellow-500/80",
-  "bg-purple-500/80",
-  "bg-pink-500/80",
-  "bg-indigo-500/80",
-  "bg-teal-500/80",
+  "bg-sky-500",
+  "bg-blue-500",
+  "bg-indigo-500",
+  "bg-violet-500",
 ];
 
 const findCriticalPath = (tasks: Task[]): Set<number> => {
@@ -63,16 +61,19 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
         }
 
         const dependents = tasks.filter(t => t.dependencies.includes(taskId));
+        
         if (dependents.length === 0) {
              const path = [taskId];
              let currentTask = task;
-             while(currentTask.dependencies.length > 0) {
-                const predecessor = taskMap.get(currentTask.dependencies[0]); // Simple case, assumes one dependency
+             
+             while(currentTask && currentTask.dependencies.length > 0) {
+                const predecessorId = currentTask.dependencies[0];
+                const predecessor = taskMap.get(predecessorId);
                 if(!predecessor) break;
                 path.unshift(predecessor.id);
                 currentTask = predecessor;
              }
-            return { path, endDate: task.end };
+             return { path, endDate: task.end };
         }
 
         let longestSubPath: number[] = [];
@@ -107,15 +108,55 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
             criticalPath = path;
         }
     });
+    
+    // Ensure all tasks in the final path exist
+    const existingCriticalPath = criticalPath.filter(id => taskMap.has(id));
 
-    return new Set(criticalPath);
+    return new Set(existingCriticalPath);
 };
 
 
 const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; criticalPath: Set<number>; }) => {
     const [newTaskName, setNewTaskName] = useState('');
-    const gridRef = useRef<HTMLDivElement>(null);
-    
+    const taskNameRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+    const processedTasks = useMemo(() => {
+        const taskMap = new Map(tasks.map(t => [t.id, {...t, children: [] as Task[]}]));
+        const topLevelTasks: Task[] = [];
+        
+        tasks.forEach(task => {
+            if (task.parentId && taskMap.has(task.parentId)) {
+                const parent = taskMap.get(task.parentId);
+                parent?.children.push(task as any);
+            }
+        });
+
+        const orderedTasks: Task[] = [];
+        const visited = new Set<number>();
+
+        const addTasks = (task: Task, level: number) => {
+            if (visited.has(task.id)) return;
+            visited.add(task.id);
+            (task as any).level = level;
+            orderedTasks.push(task);
+            
+            const children = taskMap.get(task.id)?.children || [];
+            children.forEach(child => addTasks(child, level + 1));
+        }
+
+        tasks.filter(t => !t.parentId).forEach(task => addTasks(task, 0));
+
+        // Add any orphaned children just in case
+        tasks.forEach(task => {
+            if(!visited.has(task.id)) {
+                addTasks(task, 0);
+            }
+        })
+        
+        return orderedTasks;
+
+    }, [tasks]);
+
     const [startDate, endDate] = useMemo(() => {
         if (tasks.length === 0) {
             const today = new Date();
@@ -127,31 +168,45 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
     }, [tasks]);
 
     const timelineHeaders = useMemo(() => {
-        const headers = [];
+        const headers: { main: string, sub: string[] }[] = [];
         if (view === 'day') {
-            const totalDays = differenceInDays(endDate, startDate) + 10;
-            for (let i = 0; i <= totalDays; i++) {
-                headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
+            let current = startOfWeek(startDate);
+            const final = addDays(endDate, 30);
+            while(current <= final) {
+                headers.push({
+                    main: `Week of ${format(current, 'MMM d')}`,
+                    sub: Array.from({length: 7}).map((_, i) => format(addDays(current, i), 'E d'))
+                })
+                current = addDays(current, 7);
             }
         } else if (view === 'week') {
-             let currentWeek = startOfWeek(startDate, { weekStartsOn: 1 });
-            const lastWeek = startOfWeek(addDays(endDate, 7), { weekStartsOn: 1 });
-            while (currentWeek <= lastWeek) {
-                headers.push({ label: `Week of ${format(currentWeek, 'MMM d')}`, start: currentWeek });
-                currentWeek = addDays(currentWeek, 7);
+            let current = startOfMonth(startDate);
+            const final = addDays(endDate, 30);
+            while(current <= final) {
+                const monthName = format(current, 'MMMM yyyy');
+                const weekStarts = [];
+                let weekStart = startOfWeek(current, { weekStartsOn: 1 });
+                while(weekStart < addDays(current, getDaysInMonth(current))) {
+                    weekStarts.push(`W${format(weekStart, 'w')}`);
+                    weekStart = addDays(weekStart, 7);
+                }
+                headers.push({ main: monthName, sub: weekStarts });
+                current = addDays(current, getDaysInMonth(current));
+                current = startOfMonth(current);
             }
         } else if (view === 'month') {
-            let currentMonth = startOfMonth(startDate);
-            const lastMonth = startOfMonth(addDays(endDate, 30));
-             while(currentMonth <= lastMonth) {
-                headers.push({ label: format(currentMonth, 'MMMM yyyy'), start: currentMonth });
-                currentMonth = addDays(currentMonth, getDaysInMonth(currentMonth) + 1);
-                currentMonth = startOfMonth(currentMonth);
+            let currentYear = startDate.getFullYear();
+            const endYear = endDate.getFullYear() + 1;
+            while(currentYear <= endYear) {
+                headers.push({
+                    main: String(currentYear),
+                    sub: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                });
+                currentYear++;
             }
         }
         return headers;
     }, [startDate, endDate, view]);
-
 
     const handleAddTaskClick = () => {
         if (newTaskName.trim()) {
@@ -161,129 +216,151 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
     }
 
     const getTaskPosition = (task: Task) => {
-        if (!startDate) return { offset: 0, duration: 0 };
-        
-        let offset, duration;
-        
-        switch (view) {
-            case 'day':
-                offset = differenceInDays(task.start, startDate);
-                duration = task.type === 'milestone' ? 0.5 : Math.max(1, differenceInDays(task.end, task.start) + 1);
-                break;
-            case 'week':
-                offset = differenceInWeeks(task.start, startDate, { weekStartsOn: 1 });
-                const endWeek = differenceInWeeks(task.end, startDate, { weekStartsOn: 1 });
-                duration = task.type === 'milestone' ? (1 / 14) : Math.max(1, endWeek - offset + 1);
-                break;
-            case 'month':
-                offset = differenceInMonths(task.start, startDate);
-                const endMonth = differenceInMonths(task.end, startDate);
-                duration = task.type === 'milestone' ? (1 / 60) : Math.max(1, endMonth - offset + 1);
-                break;
-            default:
-                offset = 0;
-                duration = 0;
+        if (!startDate) return { left: 0, width: 0 };
+
+        let totalUnits = 0;
+        let taskStartUnit = 0;
+        let taskDurationUnits = 0;
+
+        if (view === 'day') {
+            totalUnits = differenceInDays(endDate, startDate) + 30;
+            taskStartUnit = differenceInDays(task.start, startDate);
+            taskDurationUnits = task.type === 'milestone' ? 0.5 : Math.max(1, differenceInDays(task.end, task.start) + 1);
+        } else if (view === 'week') {
+            totalUnits = differenceInWeeks(addDays(endDate, 30), startDate) +1;
+            taskStartUnit = differenceInWeeks(task.start, startDate);
+            taskDurationUnits = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start));
+        } else { // month
+            totalUnits = differenceInMonths(addDays(endDate, 30), startDate) + 1;
+            taskStartUnit = differenceInMonths(task.start, startDate);
+            taskDurationUnits = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start));
         }
-        
-        return { offset: Math.max(0, offset), duration };
+
+        const unitWidth = 100 / totalUnits;
+        return {
+            left: taskStartUnit * unitWidth,
+            width: taskDurationUnits * unitWidth
+        };
     }
 
   return (
     <Xwrapper>
-        <div className="overflow-x-auto border rounded-md bg-card">
-            <div ref={gridRef} className="grid relative" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`, minWidth: `${250 + timelineHeaders.length * 100}px` }}>
+        <div className="border rounded-lg bg-card overflow-hidden">
+            <div className="grid" style={{ gridTemplateColumns: `300px 1fr`}}>
                 {/* Header */}
-                <div className="sticky left-0 top-0 z-20 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
-                {timelineHeaders.map((header, index) => (
-                    <div key={index} className="sticky top-0 z-20 border-b border-r p-2 text-center text-xs font-medium">
-                        {header.label}
+                <div className="bg-muted/50 border-r">
+                    <div className="p-2 h-20 flex items-center font-semibold border-b">Tasks</div>
+                </div>
+                <div className="overflow-x-auto">
+                    <div className="sticky top-0 z-20">
+                    {timelineHeaders.map((header, i) => (
+                        <div key={i} className="flex flex-col whitespace-nowrap">
+                            <div className="p-2 font-semibold text-center border-b">{header.main}</div>
+                            <div className="grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(60px, 1fr))`}}>
+                                {header.sub.map((sub, j) => (
+                                    <div key={j} className="p-2 text-xs text-center border-b border-r text-muted-foreground">{sub}</div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                     </div>
-                ))}
+                </div>
 
                 {/* Rows */}
-                {tasks.map((task, index) => {
-                    const { offset, duration } = getTaskPosition(task);
-                    const isMilestone = task.type === 'milestone';
-                    const isCritical = criticalPath.has(task.id);
+                <div className="bg-muted/50 border-r overflow-y-auto" style={{maxHeight: '60vh'}}>
+                    {processedTasks.map((task, index) => (
+                        <div
+                          ref={el => taskNameRefs.current[task.id] = el}
+                          id={`task-name-${task.id}`}
+                          key={task.id}
+                          className="h-10 flex items-center justify-between group text-sm border-b"
+                          style={{ paddingLeft: `${(task as any).level * 1.5 + 0.5}rem`}}
+                          title={task.name}
+                        >
+                            <span className={cn("truncate", {"font-bold": task.type === 'group'})}>{task.name}</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 mr-1 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
+                                <Plus className="h-4 w-4 rotate-45" />
+                            </Button>
+                        </div>
+                    ))}
+                    {/* Add Task Row */}
+                    <div className="h-12 flex items-center p-2">
+                        <input
+                            value={newTaskName}
+                            onChange={e => setNewTaskName(e.target.value)}
+                            placeholder="+ Add new task"
+                            className="bg-transparent border-none focus:outline-none w-full text-sm placeholder:text-muted-foreground"
+                            onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
+                        />
+                    </div>
+                </div>
+                <div className="overflow-x-auto overflow-y-auto" style={{maxHeight: '60vh'}}>
+                    <div className="relative">
+                        {processedTasks.map((task, index) => {
+                             const { left, width } = getTaskPosition(task);
+                             const isMilestone = task.type === 'milestone';
+                             const isCritical = criticalPath.has(task.id);
 
-                    const gridColumnStart = Math.floor(offset) + 2;
-                    const gridColumnEnd = `span ${Math.ceil(duration)}`;
-                    
-                    const leftPercentage = (offset / timelineHeaders.length) * 100;
-                    const widthPercentage = (duration / timelineHeaders.length) * 100;
-
-                    return (
-                        <React.Fragment key={task.id}>
-                            <div className="sticky left-0 z-10 truncate border-b border-r bg-card p-2 text-sm h-12 flex items-center justify-between group" title={task.name}>
-                                {task.name}
-                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
-                                    <Plus className="h-4 w-4 rotate-45" />
-                                </Button>
-                            </div>
-                            <div className="border-b" style={{ gridColumn: `2 / span ${timelineHeaders.length}`}}>
-                                <div className="relative h-12">
-                                <TooltipProvider>
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                <div
-                                    id={`task-${task.id}`}
-                                    className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length], {
-                                        "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
-                                        "w-8 h-8 transform rotate-45": isMilestone
-                                    })}
-                                    style={{ 
-                                        left: `${leftPercentage}%`,
-                                        width: isMilestone ? '2rem' : `${widthPercentage}%`,
-                                    }}
-                                >
-                                    {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-l-md" style={{ width: `${task.progress}%` }}></div>}
-                                    <span className="truncate z-10 px-1" style={{ transform: isMilestone ? 'rotate(-45deg)' : 'none' }}>{!isMilestone ? task.name : ''}</span>
-                                    {task.assignee && !isMilestone && (
-                                        <span className="text-xs ml-2 bg-black/20 px-1.5 py-0.5 rounded-full z-10">{task.assignee}</span>
-                                    )}
+                             if (task.type === 'group') {
+                                return <div key={task.id} className="h-10 border-b"></div>
+                             }
+                            
+                            return (
+                                <div key={task.id} className="h-10 border-b relative flex items-center">
+                                  <TooltipProvider>
+                                  <Tooltip>
+                                  <TooltipTrigger asChild>
+                                  <div
+                                      id={`task-bar-${task.id}`}
+                                      className={cn("absolute h-6 flex items-center rounded-sm text-white text-xs truncate", COLORS[index % COLORS.length], {
+                                          "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
+                                          "w-6 h-6 transform rotate-45 !rounded-none": isMilestone,
+                                          "bg-opacity-50": task.type === 'group'
+                                      })}
+                                      style={{ left: `${left}%`, width: `${width}%` }}
+                                  >
+                                      {task.type !== 'milestone' && (
+                                        <>
+                                        <div className="absolute top-0 left-0 h-full bg-black/30 rounded-sm" style={{ width: `${task.progress}%` }}></div>
+                                        <span className="truncate z-10 px-2">{task.name}</span>
+                                        </>
+                                      )}
+                                  </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p>{task.name}</p>
+                                      <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
+                                      <p>End: {format(task.end, 'MMM d, yyyy')}</p>
+                                      <p>Progress: {task.progress}%</p>
+                                  </TooltipContent>
+                                  </Tooltip>
+                                  </TooltipProvider>
                                 </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{task.name}</p>
-                                    <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
-                                    <p>End: {format(task.end, 'MMM d, yyyy')}</p>
-                                    <p>Progress: {task.progress}%</p>
-                                </TooltipContent>
-                                </Tooltip>
-                                </TooltipProvider>
-                                </div>
-                            </div>
-                        </React.Fragment>
-                    )
-                })}
-                {/* Add Task Row */}
-                 <div className="sticky left-0 z-10 truncate border-r bg-card p-2 text-sm h-12 flex items-center">
-                     <input
-                        value={newTaskName}
-                        onChange={e => setNewTaskName(e.target.value)}
-                        placeholder="Add a new task..."
-                        className="bg-transparent border-none focus:outline-none w-full text-sm"
-                        onKeyDown={e => e.key === 'Enter' && handleAddTaskClick()}
-                    />
-                 </div>
+                            )
+                        })}
+                        <div className="h-12"></div>
+                    </div>
+                </div>
             </div>
         </div>
         {tasks.map(task => 
             task.dependencies.map(depId => {
                 const startTaskExists = tasks.some(t => t.id === depId);
-                if (!startTaskExists) return null;
+                const endTaskExists = tasks.some(t => t.id === task.id);
+                if (!startTaskExists || !endTaskExists) return null;
+                
                 const isCritical = criticalPath.has(task.id) && criticalPath.has(depId);
                 return (
                  <Xarrow
                     key={`${depId}-${task.id}`}
-                    start={`task-${depId}`}
-                    end={`task-${task.id}`}
+                    start={`task-bar-${depId}`}
+                    end={`task-bar-${task.id}`}
                     startAnchor="right"
                     endAnchor="left"
                     color={isCritical ? "hsl(var(--destructive))" : "hsl(var(--primary))"}
-                    strokeWidth={isCritical ? 2.5 : 1.5}
+                    strokeWidth={isCritical ? 2 : 1.5}
                     path="grid"
-                    headSize={4}
+                    headSize={5}
                     zIndex={10}
                  />
                 )
@@ -293,39 +370,41 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
   );
 };
 
-const getTemplates = () => {
+const getTemplates = (): Record<string, Task[]> => {
     const today = new Date();
     const year = today.getFullYear();
     return {
-        q4Project: [
-                { id: 1, name: 'Q4 Planning', start: new Date(year, 9, 1), end: new Date(year, 9, 5), type: 'task', progress: 100, dependencies: [], assignee: 'Manager' },
-                { id: 2, name: 'Feature A Dev', start: new Date(year, 9, 6), end: new Date(year, 9, 31), type: 'task', progress: 80, dependencies: [1], assignee: 'Dev Team' },
-                { id: 3, name: 'Feature B Dev', start: new Date(year, 10, 1), end: new Date(year, 10, 20), type: 'task', progress: 40, dependencies: [1], assignee: 'Dev Team' },
-                { id: 4, name: 'Mid-Q Review', start: new Date(year, 10, 21), end: new Date(year, 10, 21), type: 'milestone', progress: 100, dependencies: [2,3] },
-                { id: 5, name: 'Testing & QA', start: new Date(year, 10, 22), end: new Date(year, 11, 10), type: 'task', progress: 20, dependencies: [4], assignee: 'QA Team' },
-                { id: 6, name: 'Deployment', start: new Date(year, 11, 15), end: new Date(year, 11, 15), type: 'milestone', progress: 0, dependencies: [5] },
-                { id: 7, name: 'Holiday Code Freeze', start: new Date(year, 11, 20), end: new Date(year, 11, 31), type: 'task', progress: 10, dependencies: [6] },
-            ],
+        marketingCampaign: [
+            { id: 1, name: 'Marketing Campaign Draft', start: new Date(year, 5, 20), end: new Date(year, 5, 27), type: 'task', progress: 100, dependencies: [], parentId: null },
+            { id: 2, name: 'New Ad Campaign', start: new Date(year, 5, 28), end: new Date(year, 5, 28), type: 'milestone', progress: 100, dependencies: [1], parentId: null },
+            { id: 3, name: 'Sales Team Group', start: new Date(year, 6, 1), end: new Date(year, 6, 11), type: 'group', progress: 0, dependencies: [2], parentId: null },
+            { id: 4, name: 'High Resolution Banner Printing', start: new Date(year, 6, 1), end: new Date(year, 6, 8), type: 'task', progress: 50, dependencies: [], parentId: 3 },
+            { id: 5, name: 'Sales reports for sales team group meeting', start: new Date(year, 6, 9), end: new Date(year, 6, 11), type: 'task', progress: 20, dependencies: [4], parentId: 3 },
+            { id: 6, name: 'New Summer Banner', start: new Date(year, 6, 5), end: new Date(year, 6, 12), type: 'task', progress: 30, dependencies: [], parentId: 3 }
+        ],
         projectDevelopment: [
-                { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], assignee: 'Analyst' },
-                { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], assignee: 'Designer' },
-                { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2] },
-                { id: 4, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [3], assignee: 'FE Devs' },
-                { id: 5, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [3], assignee: 'BE Devs' },
-                { id: 6, name: 'API Integration', start: addDays(today, 51), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [4, 5] },
-                { id: 7, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [6] },
-                { id: 8, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [7] },
-            ],
+            { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], parentId: null },
+            { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], parentId: null },
+            { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2], parentId: null },
+            { id: 4, name: 'Development', start: addDays(today, 22), end: addDays(today, 55), type: 'group', progress: 0, dependencies: [3], parentId: null},
+            { id: 5, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [], parentId: 4 },
+            { id: 6, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [], parentId: 4 },
+            { id: 7, name: 'API Integration', start: addDays(today, 51), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [5, 6], parentId: 4 },
+            { id: 8, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [7], parentId: null },
+            { id: 9, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [8], parentId: null },
+        ],
         eventPlanning: [
-                { id: 1, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], assignee: 'Coordinator' },
-                { id: 2, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [1] },
-                { id: 3, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [2], assignee: 'Coordinator' },
-                { id: 4, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [3], assignee: 'Logistics' },
-                { id: 5, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [2], assignee: 'Marketing' },
-                { id: 6, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [4, 5] },
-                { id: 7, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [6] },
-                { id: 8, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [7] },
-            ],
+            { id: 1, name: 'Planning Phase', start: today, end: addDays(today, 15), type: 'group', progress: 0, dependencies: [], parentId: null },
+            { id: 2, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], parentId: 1 },
+            { id: 3, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [2], parentId: 1 },
+            { id: 4, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [3], parentId: 1 },
+            { id: 5, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [4], parentId: null },
+            { id: 6, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [3], parentId: null },
+            { id: 7, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [5, 6], parentId: null },
+            { id: 8, name: 'Event Execution', start: addDays(today, 58), end: addDays(today, 61), type: 'group', progress: 0, dependencies: [7], parentId: null },
+            { id: 9, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [], parentId: 8 },
+            { id: 10, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [9], parentId: 8 },
+        ],
     }
 };
 
@@ -351,7 +430,7 @@ export default function GanttPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [view, setView] = useState<View>('week');
+  const [view, setView] = useState<View>('day');
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
 
@@ -360,8 +439,17 @@ export default function GanttPage() {
   }, [tasks, showCriticalPath]);
 
    useEffect(() => {
+    // Ensure templates are generated only on the client
     setTemplates(getTemplates());
   }, []);
+  
+   useEffect(() => {
+    // Load a default template on initial mount
+    if(templates && tasks.length === 0) {
+        setTasks(templates.marketingCampaign);
+    }
+   }, [templates, tasks.length]);
+
 
   const handleAddTask = (name: string) => {
     if (!name.trim()) return;
@@ -370,7 +458,7 @@ export default function GanttPage() {
     const newStart = lastTask ? addDays(lastTask.end, 1) : new Date();
     setTasks([
       ...tasks,
-      { id: newId, name, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], assignee: '' },
+      { id: newId, name, start: newStart, end: addDays(newStart, 2), type: 'task', progress: 0, dependencies: [], parentId: null },
     ]);
   };
   
@@ -397,9 +485,9 @@ export default function GanttPage() {
       setIsSuccessDialogOpen(true);
   }
 
-  const handleSelectTemplate = (template: keyof ReturnType<typeof getTemplates>) => {
+  const handleSelectTemplate = (templateName: keyof NonNullable<typeof templates>) => {
     if(templates) {
-        setTasks(templates[template]);
+        setTasks(templates[templateName]);
     }
   }
 
@@ -445,24 +533,10 @@ export default function GanttPage() {
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart Maker</h1>
-            <p className="text-muted-foreground">Plan and visualize your project timeline with advanced features.</p>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart</h1>
+            <p className="text-muted-foreground">Plan and visualize your project timeline.</p>
           </div>
            <div className="flex flex-wrap items-center gap-4">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                            Features
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                         <DropdownMenuLabel>Gantt Chart Features</DropdownMenuLabel>
-                         <DropdownMenuItem onClick={() => setIsPaymentDialogOpen(true)}>
-                            Exporting to PDF
-                         </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" disabled={!templates}>
@@ -473,9 +547,9 @@ export default function GanttPage() {
                     <DropdownMenuContent align="end">
                          <DropdownMenuLabel>Project Templates</DropdownMenuLabel>
                          <TemplateMenuItem 
-                            title="Q4 Project Schedule"
-                            description="Perfect for year-end sprints, product launches, and hitting critical targets before the holidays."
-                            onClick={() => handleSelectTemplate('q4Project')}
+                            title="Marketing Campaign"
+                            description="A sample marketing campaign plan from draft to new summer banner."
+                            onClick={() => handleSelectTemplate('marketingCampaign')}
                          />
                          <TemplateMenuItem 
                             title="Project Development Timeline"
