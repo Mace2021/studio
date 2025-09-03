@@ -352,7 +352,9 @@ export default function DashboardPage() {
         isOpen={isSuccessDialogOpen}
         onClose={() => {
             setIsSuccessDialogOpen(false);
-            setIsExportDialogOpen(true);
+            if (isSubscribed) {
+              setIsExportDialogOpen(true);
+            }
         }}
       />
       <div className="space-y-6">
