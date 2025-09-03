@@ -7,7 +7,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, max as maxDate } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
@@ -310,6 +311,22 @@ const getTemplates = () => {
     }
 };
 
+const TemplateMenuItem = ({ title, description, onClick }: { title: string; description: string; onClick: () => void }) => (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <DropdownMenuItem onClick={onClick} className="flex-col items-start">
+                    <div className="font-semibold">{title}</div>
+                    <div className="text-xs text-muted-foreground">{description}</div>
+                </DropdownMenuItem>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="start">
+                <p>{description}</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
+);
+
 
 export default function GanttPage() {
   const { user, isSubscribed, setSubscribed } = useAuth();
@@ -424,9 +441,22 @@ export default function GanttPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleSelectTemplate('q4Project')}>Q4 Project Schedule</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSelectTemplate('projectDevelopment')}>Project Development Timeline</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSelectTemplate('eventPlanning')}>Event Planning</DropdownMenuItem>
+                         <DropdownMenuLabel>Project Templates</DropdownMenuLabel>
+                         <TemplateMenuItem 
+                            title="Q4 Project Schedule"
+                            description="Perfect for year-end sprints, product launches, and hitting critical targets before the holidays."
+                            onClick={() => handleSelectTemplate('q4Project')}
+                         />
+                         <TemplateMenuItem 
+                            title="Project Development Timeline"
+                            description="A classic software development lifecycle, from initial requirements gathering and design to UAT and go-live."
+                            onClick={() => handleSelectTemplate('projectDevelopment')}
+                         />
+                         <TemplateMenuItem 
+                            title="Event Planning"
+                            description="Manage everything from venue booking and vendor contracts to marketing campaigns and on-site prep for a flawless event."
+                            onClick={() => handleSelectTemplate('eventPlanning')}
+                         />
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
@@ -453,6 +483,4 @@ export default function GanttPage() {
     </div>
   );
 }
-    
-
     
