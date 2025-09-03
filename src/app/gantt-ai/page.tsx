@@ -12,6 +12,8 @@ import { generateGanttChart } from '@/ai/flows/generate-gantt-chart-flow';
 import { GanttDisplay } from '@/components/gantt/gantt-display';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const initialPrompt = `Project Name: Q4 Marketing Campaign
 Project Goal: Launch a new product line by October 15th.
@@ -35,6 +37,80 @@ Key Milestones:
 - Product Launch: October 15, 2024
 `;
 
+const findCriticalPath = (tasks: Task[]): Set<number> => {
+    if (!tasks || tasks.length === 0) {
+        return new Set();
+    }
+
+    const taskMap = new Map<number, Task>(tasks.map(task => [task.id, task]));
+    const memo = new Map<number, { path: number[]; endDate: Date }>();
+
+    function findLongestPath(taskId: number): { path: number[]; endDate: Date } {
+        if (memo.has(taskId)) {
+            return memo.get(taskId)!;
+        }
+
+        const task = taskMap.get(taskId);
+        if (!task) {
+            return { path: [], endDate: new Date(0) };
+        }
+        
+        const dependents = tasks.filter(t => t.dependencies.includes(taskId));
+        
+        if (dependents.length === 0) {
+             const path = [taskId];
+             let currentTask = task;
+             
+             while(currentTask && currentTask.dependencies.length > 0) {
+                const predecessorId = currentTask.dependencies[0];
+                const predecessor = taskMap.get(predecessorId);
+                if(!predecessor) break;
+                path.unshift(predecessor.id);
+                currentTask = predecessor;
+             }
+             return { path, endDate: task.end };
+        }
+
+        let longestSubPath: number[] = [];
+        let maxEndDate = new Date(0);
+
+        dependents.forEach(dependent => {
+            const { path: subPath, endDate: subEndDate } = findLongestPath(dependent.id);
+            if (subEndDate > maxEndDate) {
+                maxEndDate = subEndDate;
+                longestSubPath = subPath;
+            }
+        });
+        
+        const result = {
+            path: [taskId, ...longestSubPath],
+            endDate: maxEndDate
+        };
+        
+        memo.set(taskId, result);
+        return result;
+    }
+
+    let criticalPath: number[] = [];
+    let finalEndDate = new Date(0);
+
+    const startNodes = tasks.filter(t => !t.dependencies || t.dependencies.length === 0);
+
+    startNodes.forEach(startNode => {
+        const { path, endDate } = findLongestPath(startNode.id);
+        if (endDate > finalEndDate) {
+            finalEndDate = endDate;
+            criticalPath = path;
+        }
+    });
+    
+    // Ensure all tasks in the final path exist
+    const existingCriticalPath = criticalPath.filter(id => taskMap.has(id));
+
+    return new Set(existingCriticalPath);
+};
+
+
 export default function AiGanttPage() {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,8 +118,11 @@ export default function AiGanttPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
+  const [showCriticalPath, setShowCriticalPath] = useState(true);
   
-  const criticalPath = useMemo(() => new Set<number>(), []); // Placeholder
+  const criticalPath = useMemo(() => {
+    return showCriticalPath ? findCriticalPath(tasks) : new Set<number>();
+  }, [tasks, showCriticalPath]);
 
   const handleGenerateChart = async () => {
     if (!user) {
@@ -116,7 +195,13 @@ export default function AiGanttPage() {
       {tasks.length > 0 && (
           <Card>
             <CardHeader>
-                <CardTitle>Generated Gantt Chart</CardTitle>
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <CardTitle>Generated Gantt Chart</CardTitle>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="critical-path" checked={showCriticalPath} onCheckedChange={setShowCriticalPath} />
+                        <Label htmlFor="critical-path">Show Critical Path</Label>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <GanttDisplay tasks={tasks} view="week" criticalPath={criticalPath} />
