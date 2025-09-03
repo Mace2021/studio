@@ -378,22 +378,6 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
     </TooltipProvider>
 );
 
-const DisabledMenuItem = ({ title }: { title: string }) => (
-    <TooltipProvider>
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <DropdownMenuItem disabled>
-                    {title}
-                </DropdownMenuItem>
-            </TooltipTrigger>
-            <TooltipContent side="right" align="start">
-                <p>This feature is planned for a future update.</p>
-            </TooltipContent>
-        </Tooltip>
-    </TooltipProvider>
-)
-
-
 export default function GanttPage() {
   const { user, isSubscribed, setSubscribed } = useAuth();
   const router = useRouter();
@@ -511,12 +495,6 @@ export default function GanttPage() {
                          <DropdownMenuItem onClick={() => setIsPaymentDialogOpen(true)}>
                             Exporting to PDF
                          </DropdownMenuItem>
-                         <DropdownMenuSeparator />
-                         <DisabledMenuItem title="Drag and Drop Task Assigning" />
-                         <DisabledMenuItem title="Task Grouping" />
-                         <DisabledMenuItem title="Collaboration Tools" />
-                         <DisabledMenuItem title="Rights Management" />
-                         <DisabledMenuItem title="Reminders" />
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
