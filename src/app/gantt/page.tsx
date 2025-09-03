@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, max as maxDate } from 'date-fns';
+import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentDialog } from '@/components/dashboard/payment-dialog';
@@ -118,11 +118,9 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
 
 const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; criticalPath: Set<number>; }) => {
     const [newTaskName, setNewTaskName] = useState('');
-    const taskNameRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
     const processedTasks = useMemo(() => {
         const taskMap = new Map(tasks.map(t => [t.id, {...t, children: [] as Task[]}]));
-        const topLevelTasks: Task[] = [];
         
         tasks.forEach(task => {
             if (task.parentId && taskMap.has(task.parentId)) {
@@ -169,8 +167,11 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
 
     const timelineHeaders = useMemo(() => {
         const headers: { main: string, sub: string[] }[] = [];
+        if (!startDate || !endDate) return [];
+        let current: Date;
+
         if (view === 'day') {
-            let current = startOfWeek(startDate);
+            current = startOfWeek(startDate);
             const final = addDays(endDate, 30);
             while(current <= final) {
                 headers.push({
@@ -180,19 +181,19 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                 current = addDays(current, 7);
             }
         } else if (view === 'week') {
-            let current = startOfMonth(startDate);
+            current = startOfMonth(startDate);
             const final = addDays(endDate, 30);
             while(current <= final) {
                 const monthName = format(current, 'MMMM yyyy');
                 const weekStarts = [];
                 let weekStart = startOfWeek(current, { weekStartsOn: 1 });
-                while(weekStart < addDays(current, getDaysInMonth(current))) {
+                const monthEnd = addDays(startOfMonth(addDays(current, 35)), -1);
+                while(weekStart <= monthEnd) {
                     weekStarts.push(`W${format(weekStart, 'w')}`);
                     weekStart = addDays(weekStart, 7);
                 }
                 headers.push({ main: monthName, sub: weekStarts });
-                current = addDays(current, getDaysInMonth(current));
-                current = startOfMonth(current);
+                current = addDays(startOfMonth(current), 35);
             }
         } else if (view === 'month') {
             let currentYear = startDate.getFullYear();
@@ -223,18 +224,20 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
         let taskDurationUnits = 0;
 
         if (view === 'day') {
-            totalUnits = differenceInDays(endDate, startDate) + 30;
+            totalUnits = differenceInDays(addDays(endDate, 30), startDate);
             taskStartUnit = differenceInDays(task.start, startDate);
             taskDurationUnits = task.type === 'milestone' ? 0.5 : Math.max(1, differenceInDays(task.end, task.start) + 1);
         } else if (view === 'week') {
-            totalUnits = differenceInWeeks(addDays(endDate, 30), startDate) +1;
+            totalUnits = differenceInWeeks(addDays(endDate, 30), startDate);
             taskStartUnit = differenceInWeeks(task.start, startDate);
             taskDurationUnits = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start));
         } else { // month
-            totalUnits = differenceInMonths(addDays(endDate, 30), startDate) + 1;
+            totalUnits = differenceInMonths(addDays(endDate, 30), startDate);
             taskStartUnit = differenceInMonths(task.start, startDate);
             taskDurationUnits = task.type === 'milestone' ? 0.1 : Math.max(1, differenceInMonths(task.end, task.start));
         }
+        
+        if (totalUnits === 0) return {left: 0, width: 0};
 
         const unitWidth = 100 / totalUnits;
         return {
@@ -252,7 +255,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                     <div className="p-2 h-20 flex items-center font-semibold border-b">Tasks</div>
                 </div>
                 <div className="overflow-x-auto">
-                    <div className="sticky top-0 z-20">
+                    <div className="sticky top-0 z-20 bg-card">
                     {timelineHeaders.map((header, i) => (
                         <div key={i} className="flex flex-col whitespace-nowrap">
                             <div className="p-2 font-semibold text-center border-b">{header.main}</div>
@@ -268,9 +271,8 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
 
                 {/* Rows */}
                 <div className="bg-muted/50 border-r overflow-y-auto" style={{maxHeight: '60vh'}}>
-                    {processedTasks.map((task, index) => (
+                    {processedTasks.map((task) => (
                         <div
-                          ref={el => taskNameRefs.current[task.id] = el}
                           id={`task-name-${task.id}`}
                           key={task.id}
                           className="h-10 flex items-center justify-between group text-sm border-b"
@@ -317,9 +319,9 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                                           "w-6 h-6 transform rotate-45 !rounded-none": isMilestone,
                                           "bg-opacity-50": task.type === 'group'
                                       })}
-                                      style={{ left: `${left}%`, width: `${width}%` }}
+                                      style={{ left: `${left}%`, width: isMilestone ? '20px' : `${width}%` }}
                                   >
-                                      {task.type !== 'milestone' && (
+                                      {!isMilestone && (
                                         <>
                                         <div className="absolute top-0 left-0 h-full bg-black/30 rounded-sm" style={{ width: `${task.progress}%` }}></div>
                                         <span className="truncate z-10 px-2">{task.name}</span>
@@ -430,7 +432,7 @@ export default function GanttPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
-  const [view, setView] = useState<View>('day');
+  const [view, setView] = useState<View>('week');
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
 
@@ -587,3 +589,5 @@ export default function GanttPage() {
     </div>
   );
 }
+
+    
