@@ -79,10 +79,15 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
                 longestSubPath = subPath;
             }
         });
+        
+        // This is incorrect, we need to calculate the end date of the current task
+        // and pass it down, not just the max end date of dependents.
+        const taskEndDate = task.end;
+        const finalEndDate = dependents.length > 0 ? maxEndDate : taskEndDate;
 
         const result = {
             path: [taskId, ...longestSubPath],
-            endDate: maxEndDate,
+            endDate: finalEndDate,
         };
         
         memo.set(taskId, result);
@@ -92,15 +97,45 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
     let criticalPath: number[] = [];
     let finalEndDate = new Date(0);
 
-    // Find starting nodes (no dependencies)
-    const startNodes = tasks.filter(t => t.dependencies.length === 0);
-    startNodes.forEach(startNode => {
-        const { path, endDate } = findLongestPath(startNode.id);
-        if (endDate > finalEndDate) {
-            finalEndDate = endDate;
-            criticalPath = path;
+    const endNodes = tasks.filter(t => !tasks.some(other => other.dependencies.includes(t.id)));
+
+    endNodes.forEach(endNode => {
+        const pathToEnd = (function findPath(currId: number): number[] {
+            const currentTask = taskMap.get(currId);
+            if (!currentTask) return [];
+
+            if (currentTask.dependencies.length === 0) {
+                return [currId];
+            }
+
+            let longestPath: number[] = [];
+            let maxDuration = -1;
+
+            currentTask.dependencies.forEach(depId => {
+                const p = findPath(depId);
+                const pathTasks = p.map(id => taskMap.get(id)!);
+                const duration = differenceInDays(
+                    maxDate(...pathTasks.map(t => t.end)),
+                    pathTasks[0].start
+                );
+
+                if (duration > maxDuration) {
+                    maxDuration = duration;
+                    longestPath = p;
+                }
+            });
+            return [...longestPath, currId];
+        })(endNode.id);
+        
+        const pathTasks = pathToEnd.map(id => taskMap.get(id)!);
+        const pathEndDate = pathTasks.length > 0 ? maxDate(...pathTasks.map(t => t.end)) : new Date(0);
+        
+        if (pathEndDate > finalEndDate) {
+            finalEndDate = pathEndDate;
+            criticalPath = pathToEnd;
         }
     });
+
 
     return new Set(criticalPath);
 };
@@ -110,22 +145,19 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
     const [newTaskName, setNewTaskName] = useState('');
     const gridRef = useRef<HTMLDivElement>(null);
     
-    const [startDate, setStartDate] = useState<Date>(() => startOfWeek(new Date()));
-
-    useEffect(() => {
-        if (tasks.length > 0) {
-            const minDate = new Date(Math.min(...tasks.map(t => t.start.getTime())));
-            setStartDate(startOfWeek(minDate));
+    const [startDate, endDate] = useMemo(() => {
+        if (tasks.length === 0) {
+            const today = new Date();
+            return [startOfWeek(today), addDays(today, 30)];
         }
+        const start = new Date(Math.min(...tasks.map(t => t.start.getTime())));
+        const end = new Date(Math.max(...tasks.map(t => t.end.getTime())));
+        return [start, end];
     }, [tasks]);
 
     const timelineHeaders = useMemo(() => {
         const headers = [];
-        if (!startDate) return [];
-        
-        const endDate = tasks.length > 0 
-            ? new Date(Math.max(...tasks.map(t => t.end.getTime())))
-            : addDays(startDate, view === 'day' ? 30 : (view === 'week' ? 12*7 : 12*30));
+        let current = startDate;
 
         if (view === 'day') {
             const totalDays = differenceInDays(endDate, startDate) + 10;
@@ -133,22 +165,23 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                 headers.push({ label: format(addDays(startDate, i), 'M/d'), start: addDays(startDate, i) });
             }
         } else if (view === 'week') {
-            let current = startOfWeek(startDate);
-            const end = addDays(endDate, 14);
-            while(current <= end) {
-                headers.push({ label: `Week of ${format(current, 'MMM d')}`, start: current });
-                current = addDays(current, 7);
+             let currentWeek = startOfWeek(startDate, { weekStartsOn: 1 });
+            const lastWeek = startOfWeek(addDays(endDate, 7), { weekStartsOn: 1 });
+            while (currentWeek <= lastWeek) {
+                headers.push({ label: `Week of ${format(currentWeek, 'MMM d')}`, start: currentWeek });
+                currentWeek = addDays(currentWeek, 7);
             }
         } else if (view === 'month') {
-            let current = startOfMonth(startDate);
-            const end = addDays(startOfMonth(endDate), 60);
-             while(current <= end) {
-                headers.push({ label: format(current, 'MMMM yyyy'), start: current });
-                current = addDays(current, getDaysInMonth(current) + 1);
+            let currentMonth = startOfMonth(startDate);
+            const lastMonth = startOfMonth(addDays(endDate, 30));
+             while(currentMonth <= lastMonth) {
+                headers.push({ label: format(currentMonth, 'MMMM yyyy'), start: currentMonth });
+                currentMonth = addDays(currentMonth, getDaysInMonth(currentMonth) + 1); // Move to next month
+                currentMonth = startOfMonth(currentMonth); // Ensure it's the start of the month
             }
         }
         return headers;
-    }, [startDate, tasks, view]);
+    }, [startDate, endDate, view]);
 
 
     const handleAddTaskClick = () => {
@@ -160,24 +193,23 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
 
     const getTaskPosition = (task: Task) => {
         if (!startDate) return { offset: 0, duration: 0 };
+        
         let offset, duration;
-        const colWidth = 1; // each column is 1fr
         
         switch (view) {
             case 'day':
                 offset = differenceInDays(task.start, startDate);
-                duration = task.type === 'milestone' ? colWidth : Math.max(1, differenceInDays(task.end, task.start) + 1);
+                duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
                 break;
             case 'week':
                 offset = differenceInWeeks(task.start, startDate, { weekStartsOn: 1 });
-                duration = task.type === 'milestone' ? 0.2 : Math.max(1, differenceInWeeks(task.end, task.start, { weekStartsOn: 1 }) + 1);
+                const endWeek = differenceInWeeks(task.end, startDate, { weekStartsOn: 1 });
+                duration = task.type === 'milestone' ? (1 / 7) : Math.max(1, endWeek - offset + 1);
                 break;
             case 'month':
                 offset = differenceInMonths(task.start, startDate);
-                 const endOfMonth = startOfMonth(task.end);
-                const startOfMonthVal = startOfMonth(task.start);
-                const monthDiff = differenceInMonths(endOfMonth, startOfMonthVal);
-                duration = task.type === 'milestone' ? 0.1 : Math.max(1, monthDiff + 1);
+                const endMonth = differenceInMonths(task.end, startDate);
+                duration = task.type === 'milestone' ? (1 / 30) : Math.max(1, endMonth - offset + 1);
                 break;
             default:
                 offset = 0;
@@ -192,7 +224,7 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
         <div className="overflow-x-auto border rounded-md bg-card">
             <div ref={gridRef} className="grid relative" style={{ gridTemplateColumns: `250px repeat(${timelineHeaders.length}, minmax(100px, 1fr))`, minWidth: `${250 + timelineHeaders.length * 100}px` }}>
                 {/* Header */}
-                <div className="sticky top-0 z-20 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
+                <div className="sticky left-0 top-0 z-20 border-b border-r bg-muted/50 p-2 font-semibold">Task</div>
                 {timelineHeaders.map((header, index) => (
                     <div key={index} className="sticky top-0 z-20 border-b border-r p-2 text-center text-xs font-medium">
                         {header.label}
@@ -204,6 +236,13 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                     const { offset, duration } = getTaskPosition(task);
                     const isMilestone = task.type === 'milestone';
                     const isCritical = criticalPath.has(task.id);
+
+                    const gridColumnStart = Math.floor(offset) + 2;
+                    const gridColumnEnd = `span ${Math.ceil(duration)}`;
+                    
+                    const leftPercentage = (offset / timelineHeaders.length) * 100;
+                    const widthPercentage = (duration / timelineHeaders.length) * 100;
+
                     return (
                         <React.Fragment key={task.id}>
                             <div className="sticky left-0 z-10 truncate border-b border-r bg-card p-2 text-sm h-12 flex items-center justify-between group" title={task.name}>
@@ -214,17 +253,20 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                             </div>
                             <div className="border-b" style={{ gridColumn: `2 / span ${timelineHeaders.length}`}}>
                                 <div className="relative h-12">
+                                <TooltipProvider>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <div
                                     id={`task-${task.id}`}
                                     className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length], {
                                         "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
                                     })}
                                     style={{ 
-                                        left: `calc(${(offset / timelineHeaders.length) * 100}% + 4px)`,
-                                        width: `calc(${(duration / timelineHeaders.length) * 100}% - 8px)`,
-                                        transform: isMilestone ? 'rotate(45deg)' : 'none',
+                                        left: `${leftPercentage}%`,
+                                        width: `${widthPercentage}%`,
+                                        transform: isMilestone ? 'translateX(-50%) rotate(45deg)' : 'none',
                                         height: isMilestone ? '2rem' : '2rem',
-                                        width: isMilestone ? '2rem' : `calc(${(duration / timelineHeaders.length) * 100}% - 8px)`,
+                                        width: isMilestone ? '2rem' : `${widthPercentage}%`,
                                     }}
                                 >
                                     {!isMilestone && <div className="absolute top-0 left-0 h-full bg-black/30 rounded-l-md" style={{ width: `${task.progress}%` }}></div>}
@@ -233,6 +275,15 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                                         <span className="text-xs ml-2 bg-black/20 px-1.5 py-0.5 rounded-full z-10">{task.assignee}</span>
                                     )}
                                 </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{task.name}</p>
+                                    <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
+                                    <p>End: {format(task.end, 'MMM d, yyyy')}</p>
+                                    <p>Progress: {task.progress}%</p>
+                                </TooltipContent>
+                                </Tooltip>
+                                </TooltipProvider>
                                 </div>
                             </div>
                         </React.Fragment>
@@ -381,7 +432,7 @@ export default function GanttPage() {
       setIsSuccessDialogOpen(true);
   }
 
-  const handleSelectTemplate = (template: 'q4Project' | 'projectDevelopment' | 'eventPlanning') => {
+  const handleSelectTemplate = (template: keyof ReturnType<typeof getTemplates>) => {
     if(templates) {
         setTasks(templates[template]);
     }
