@@ -2,12 +2,12 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth, getDaysInMonth, max as maxDate } from 'date-fns';
@@ -52,8 +52,6 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
     const taskMap = new Map<number, Task>(tasks.map(task => [task.id, task]));
     const memo = new Map<number, { path: number[]; endDate: Date }>();
 
-    const getTaskDuration = (task: Task) => differenceInDays(task.end, task.start);
-
     function findLongestPath(taskId: number): { path: number[]; endDate: Date } {
         if (memo.has(taskId)) {
             return memo.get(taskId)!;
@@ -66,7 +64,15 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
 
         const dependents = tasks.filter(t => t.dependencies.includes(taskId));
         if (dependents.length === 0) {
-            return { path: [taskId], endDate: task.end };
+             const path = [taskId];
+             let currentTask = task;
+             while(currentTask.dependencies.length > 0) {
+                const predecessor = taskMap.get(currentTask.dependencies[0]); // Simple case, assumes one dependency
+                if(!predecessor) break;
+                path.unshift(predecessor.id);
+                currentTask = predecessor;
+             }
+            return { path, endDate: task.end };
         }
 
         let longestSubPath: number[] = [];
@@ -80,14 +86,9 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
             }
         });
         
-        // This is incorrect, we need to calculate the end date of the current task
-        // and pass it down, not just the max end date of dependents.
-        const taskEndDate = task.end;
-        const finalEndDate = dependents.length > 0 ? maxEndDate : taskEndDate;
-
         const result = {
             path: [taskId, ...longestSubPath],
-            endDate: finalEndDate,
+            endDate: maxEndDate
         };
         
         memo.set(taskId, result);
@@ -97,45 +98,15 @@ const findCriticalPath = (tasks: Task[]): Set<number> => {
     let criticalPath: number[] = [];
     let finalEndDate = new Date(0);
 
-    const endNodes = tasks.filter(t => !tasks.some(other => other.dependencies.includes(t.id)));
+    const startNodes = tasks.filter(t => t.dependencies.length === 0);
 
-    endNodes.forEach(endNode => {
-        const pathToEnd = (function findPath(currId: number): number[] {
-            const currentTask = taskMap.get(currId);
-            if (!currentTask) return [];
-
-            if (currentTask.dependencies.length === 0) {
-                return [currId];
-            }
-
-            let longestPath: number[] = [];
-            let maxDuration = -1;
-
-            currentTask.dependencies.forEach(depId => {
-                const p = findPath(depId);
-                const pathTasks = p.map(id => taskMap.get(id)!);
-                const duration = differenceInDays(
-                    maxDate(...pathTasks.map(t => t.end)),
-                    pathTasks[0].start
-                );
-
-                if (duration > maxDuration) {
-                    maxDuration = duration;
-                    longestPath = p;
-                }
-            });
-            return [...longestPath, currId];
-        })(endNode.id);
-        
-        const pathTasks = pathToEnd.map(id => taskMap.get(id)!);
-        const pathEndDate = pathTasks.length > 0 ? maxDate(...pathTasks.map(t => t.end)) : new Date(0);
-        
-        if (pathEndDate > finalEndDate) {
-            finalEndDate = pathEndDate;
-            criticalPath = pathToEnd;
+    startNodes.forEach(startNode => {
+        const { path, endDate } = findLongestPath(startNode.id);
+        if (endDate > finalEndDate) {
+            finalEndDate = endDate;
+            criticalPath = path;
         }
     });
-
 
     return new Set(criticalPath);
 };
@@ -157,8 +128,6 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
 
     const timelineHeaders = useMemo(() => {
         const headers = [];
-        let current = startDate;
-
         if (view === 'day') {
             const totalDays = differenceInDays(endDate, startDate) + 10;
             for (let i = 0; i <= totalDays; i++) {
@@ -176,8 +145,8 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
             const lastMonth = startOfMonth(addDays(endDate, 30));
              while(currentMonth <= lastMonth) {
                 headers.push({ label: format(currentMonth, 'MMMM yyyy'), start: currentMonth });
-                currentMonth = addDays(currentMonth, getDaysInMonth(currentMonth) + 1); // Move to next month
-                currentMonth = startOfMonth(currentMonth); // Ensure it's the start of the month
+                currentMonth = addDays(currentMonth, getDaysInMonth(currentMonth) + 1);
+                currentMonth = startOfMonth(currentMonth);
             }
         }
         return headers;
@@ -199,17 +168,17 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
         switch (view) {
             case 'day':
                 offset = differenceInDays(task.start, startDate);
-                duration = task.type === 'milestone' ? 1 : Math.max(1, differenceInDays(task.end, task.start) + 1);
+                duration = task.type === 'milestone' ? 0.5 : Math.max(1, differenceInDays(task.end, task.start) + 1);
                 break;
             case 'week':
                 offset = differenceInWeeks(task.start, startDate, { weekStartsOn: 1 });
                 const endWeek = differenceInWeeks(task.end, startDate, { weekStartsOn: 1 });
-                duration = task.type === 'milestone' ? (1 / 7) : Math.max(1, endWeek - offset + 1);
+                duration = task.type === 'milestone' ? (1 / 14) : Math.max(1, endWeek - offset + 1);
                 break;
             case 'month':
                 offset = differenceInMonths(task.start, startDate);
                 const endMonth = differenceInMonths(task.end, startDate);
-                duration = task.type === 'milestone' ? (1 / 30) : Math.max(1, endMonth - offset + 1);
+                duration = task.type === 'milestone' ? (1 / 60) : Math.max(1, endMonth - offset + 1);
                 break;
             default:
                 offset = 0;
@@ -260,12 +229,10 @@ const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { 
                                     id={`task-${task.id}`}
                                     className={cn("absolute h-8 top-2 flex items-center justify-between px-2 rounded-md text-white text-xs truncate", COLORS[index % COLORS.length], {
                                         "ring-2 ring-red-500 ring-offset-2 ring-offset-card": isCritical,
+                                        "w-8 h-8 transform rotate-45": isMilestone
                                     })}
                                     style={{ 
                                         left: `${leftPercentage}%`,
-                                        width: `${widthPercentage}%`,
-                                        transform: isMilestone ? 'translateX(-50%) rotate(45deg)' : 'none',
-                                        height: isMilestone ? '2rem' : '2rem',
                                         width: isMilestone ? '2rem' : `${widthPercentage}%`,
                                     }}
                                 >
@@ -393,14 +360,13 @@ export default function GanttPage() {
   }, [tasks, showCriticalPath]);
 
    useEffect(() => {
-    // Initialize templates on the client-side to avoid hydration errors with dates
     setTemplates(getTemplates());
   }, []);
 
   const handleAddTask = (name: string) => {
     if (!name.trim()) return;
     const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-    const lastTask = tasks[tasks.length - 1];
+    const lastTask = tasks.length > 0 ? tasks[tasks.length - 1] : null;
     const newStart = lastTask ? addDays(lastTask.end, 1) : new Date();
     setTasks([
       ...tasks,
@@ -547,7 +513,3 @@ export default function GanttPage() {
     </div>
   );
 }
-    
-    
-
-    
