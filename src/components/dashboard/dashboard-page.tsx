@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const chartRefs = useRef<RefObject<HTMLDivElement>[]>([]);
   const dataPreviewRef = useRef<HTMLDivElement>(null);
   const [activeFilter, setActiveFilter] = useState<Filter>(null);
-  const { user, isSubscribed, setSubscribed } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
 
@@ -157,18 +157,10 @@ export default function DashboardPage() {
         router.push('/login');
         return;
     }
-
-    if (isSubscribed) {
-        setIsExportDialogOpen(true);
-    } else {
-        setIsPaymentDialogOpen(true);
-    }
+    setIsExportDialogOpen(true);
   }
   
   const handlePaymentSuccess = (type: 'onetime' | 'subscription') => {
-      if (type === 'subscription') {
-          setSubscribed(true);
-      }
       setIsPaymentDialogOpen(false);
       setIsSuccessDialogOpen(true);
   }
@@ -352,9 +344,7 @@ export default function DashboardPage() {
         isOpen={isSuccessDialogOpen}
         onClose={() => {
             setIsSuccessDialogOpen(false);
-            if (isSubscribed) {
-              setIsExportDialogOpen(true);
-            }
+            setIsExportDialogOpen(true);
         }}
       />
       <div className="space-y-6">
@@ -579,5 +569,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
-    

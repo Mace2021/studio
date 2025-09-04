@@ -37,7 +37,7 @@ const PayPalForm = ({ formRef }: { formRef: React.RefObject<HTMLFormElement> }) 
 
 
 export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps) {
-  const [paymentOption, setPaymentOption] = useState<'onetime' | 'subscription'>('subscription');
+  const [paymentOption, setPaymentOption] = useState<'onetime' | 'subscription'>('onetime');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -46,6 +46,8 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
   const handleOneTimePayment = () => {
     if (formRef.current) {
         formRef.current.submit();
+        // Assume success for demo purposes, as we can't get a webhook response
+        setTimeout(() => onSuccess('onetime'), 2000);
     }
   };
 
@@ -65,17 +67,17 @@ export function PaymentDialog({ isOpen, onClose, onSuccess }: PaymentDialogProps
                       layout: 'vertical',
                       label: 'subscribe'
                   },
-                  createSubscription: function(data, actions) {
+                  createSubscription: function(data: any, actions: any) {
                     return actions.subscription.create({
                       /* Creates the subscription */
                       plan_id: 'P-6WA10310SE254683XNCSO6II'
                     });
                   },
-                  onApprove: function(data, actions) {
+                  onApprove: function(data: any, actions: any) {
                     toast({ title: 'Subscription Successful!', description: `Subscription ID: ${data.subscriptionID}` });
                     onSuccess('subscription');
                   },
-                  onError: function(err) {
+                  onError: function(err: any) {
                     console.error("PayPal button error:", err);
                     toast({ variant: 'destructive', title: 'Payment Error', description: 'Something went wrong with the payment. Please try again.'});
                   }

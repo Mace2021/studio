@@ -19,8 +19,6 @@ import { Loader2 } from 'lucide-react';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isSubscribed: boolean;
-  setSubscribed: (subscribed: boolean) => void;
   signInWithGoogle: () => Promise<void>;
   signInWithGitHub: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
@@ -33,31 +31,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (user) {
-        // Check subscription status from localStorage on login
-        const subStatus = localStorage.getItem(`subscribed_${user.uid}`);
-        setIsSubscribed(subStatus === 'true');
-      } else {
-        setIsSubscribed(false);
-      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
-
-  const setSubscribed = (subscribed: boolean) => {
-      if (user) {
-          localStorage.setItem(`subscribed_${user.uid}`, String(subscribed));
-          setIsSubscribed(subscribed);
-      }
-  }
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -82,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
   };
 
-  const value = { user, loading, isSubscribed, setSubscribed, signInWithGoogle, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
+  const value = { user, loading, signInWithGoogle, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
 
   return (
     <AuthContext.Provider value={value}>

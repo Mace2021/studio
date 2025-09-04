@@ -11,8 +11,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, addDays } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
-import { PaymentDialog } from '@/components/dashboard/payment-dialog';
-import { SuccessDialog } from '@/components/dashboard/success-dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { Task } from '@/lib/types';
@@ -149,11 +147,9 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
 );
 
 export default function GanttPage() {
-  const { user, isSubscribed, setSubscribed } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [view, setView] = useState<View>('week');
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
@@ -193,20 +189,8 @@ export default function GanttPage() {
       })));
   }
   
-  const handleSubscribeClick = () => {
-      if (!user) {
-          router.push('/login');
-      } else {
-          setIsPaymentDialogOpen(true);
-      }
-  }
-
-  const handlePaymentSuccess = (type: 'onetime' | 'subscription') => {
-      if (type === 'subscription') {
-          setSubscribed(true);
-      }
-      setIsPaymentDialogOpen(false);
-      setIsSuccessDialogOpen(true);
+  const handleLoginClick = () => {
+      router.push('/login');
   }
 
   const handleSelectTemplate = (templateName: keyof NonNullable<typeof templates>) => {
@@ -215,18 +199,9 @@ export default function GanttPage() {
     }
   }
 
-  if (!user || !isSubscribed) {
+  if (!user) {
       return (
         <>
-            <PaymentDialog 
-                isOpen={isPaymentDialogOpen} 
-                onClose={() => setIsPaymentDialogOpen(false)} 
-                onSuccess={handlePaymentSuccess}
-            />
-             <SuccessDialog
-                isOpen={isSuccessDialogOpen}
-                onClose={() => setIsSuccessDialogOpen(false)}
-             />
             <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
                 <Card className="w-full max-w-md text-center">
                     <CardHeader>
@@ -240,11 +215,11 @@ export default function GanttPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="mb-4">
-                            Upgrade your plan to get unlimited access to this tool and create powerful project timelines.
+                            Log in to get unlimited access to this tool and create powerful project timelines.
                         </p>
-                        <Button onClick={handleSubscribeClick}>
+                        <Button onClick={handleLoginClick}>
                                 <Sparkles className="mr-2 h-4 w-4" />
-                                Subscribe Now
+                                Login to Use
                         </Button>
                     </CardContent>
                 </Card>
