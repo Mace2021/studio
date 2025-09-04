@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { X } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 
 interface RolesDialogProps {
   isOpen: boolean;
@@ -39,19 +39,21 @@ const initialCollaborators: Collaborator[] = [
 
 export function RolesDialog({ isOpen, onClose }: RolesDialogProps) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>(initialCollaborators);
+  const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<Role>('Viewer');
 
   const handleAddCollaborator = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newEmail.trim()) {
+    if (newEmail.trim() && newName.trim()) {
       const newCollaborator: Collaborator = {
         id: Date.now(),
-        name: 'New Member', // In a real app, you'd fetch this
+        name: newName,
         email: newEmail,
         role: newRole,
       };
       setCollaborators([...collaborators, newCollaborator]);
+      setNewName('');
       setNewEmail('');
       setNewRole('Viewer');
     }
@@ -63,7 +65,7 @@ export function RolesDialog({ isOpen, onClose }: RolesDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Manage Roles & Permissions</DialogTitle>
           <DialogDescription>
@@ -71,12 +73,16 @@ export function RolesDialog({ isOpen, onClose }: RolesDialogProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleAddCollaborator} className="grid grid-cols-1 md:grid-cols-3 items-end gap-2 py-4">
-            <div className="grid gap-1.5 col-span-2 md:col-span-1">
+        <form onSubmit={handleAddCollaborator} className="grid grid-cols-1 md:grid-cols-4 items-end gap-4 py-4 border-b pb-6">
+            <div className="grid gap-1.5 col-span-1">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" type="text" placeholder="John Doe" value={newName} onChange={e => setNewName(e.target.value)} />
+            </div>
+             <div className="grid gap-1.5 col-span-1">
                 <Label htmlFor="email">Email address</Label>
                 <Input id="email" type="email" placeholder="name@company.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
             </div>
-             <div className="grid gap-1.5">
+             <div className="grid gap-1.5 col-span-1">
                 <Label htmlFor="role">Role</Label>
                 <Select value={newRole} onValueChange={(value: Role) => setNewRole(value)}>
                     <SelectTrigger>
@@ -89,7 +95,10 @@ export function RolesDialog({ isOpen, onClose }: RolesDialogProps) {
                     </SelectContent>
                 </Select>
             </div>
-            <Button type="submit">Add Member</Button>
+            <Button type="submit" className="w-full md:w-auto">
+                <UserPlus className="mr-2 h-4 w-4"/>
+                Add Member
+            </Button>
         </form>
 
         <div className="space-y-2">

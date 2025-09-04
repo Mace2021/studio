@@ -19,6 +19,7 @@ import { EditTaskDialog } from '@/components/gantt/edit-task-dialog';
 import { ShareDialog } from '@/components/gantt/share-dialog';
 import { RolesDialog } from '@/components/gantt/roles-dialog';
 import { InsightsDialog } from '@/components/gantt/insights-dialog';
+import Link from 'next/link';
 
 
 type View = 'day' | 'week' | 'month';
@@ -150,13 +151,19 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
     </TooltipProvider>
 );
 
-const FeatureMenuItem = ({ title, icon: Icon, onClick }: { title: string; icon: React.ElementType, onClick: () => void }) => {
-    return (
-         <DropdownMenuItem onClick={onClick} className="gap-2">
+const FeatureMenuItem = ({ title, icon: Icon, onClick, href }: { title: string; icon: React.ElementType, onClick?: () => void, href?: string }) => {
+    const content = (
+        <DropdownMenuItem onClick={onClick} className="gap-2 cursor-pointer">
             <Icon className="h-4 w-4" />
             <span>{title}</span>
         </DropdownMenuItem>
-    )
+    );
+
+    if (href) {
+        return <Link href={href} passHref>{content}</Link>;
+    }
+
+    return content;
 }
 
 export default function GanttPage() {
@@ -289,7 +296,7 @@ export default function GanttPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Analysis</DropdownMenuLabel>
                         <FeatureMenuItem title="View Insights" icon={BarChart} onClick={() => setIsInsightsOpen(true)} />
-                        <FeatureMenuItem title="Kanban Board" icon={Sheet} onClick={() => {}} />
+                        <FeatureMenuItem title="Kanban Board" icon={Sheet} href="/kanban" />
                     </DropdownMenuContent>
                 </DropdownMenu>
 
