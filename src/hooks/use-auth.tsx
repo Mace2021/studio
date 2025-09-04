@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isSubscribed: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithGitHub: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
@@ -31,11 +32,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      // In a real app, you'd check for subscription status here (e.g., from Firestore or custom claims)
+      // For this demo, we'll consider any logged-in user as subscribed.
+      setIsSubscribed(!!user); 
       setLoading(false);
     });
 
@@ -65,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
   };
 
-  const value = { user, loading, signInWithGoogle, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
+  const value = { user, loading, isSubscribed, signInWithGoogle, signInWithGitHub, signInWithEmail, signUpWithEmail, signOut };
 
   return (
     <AuthContext.Provider value={value}>

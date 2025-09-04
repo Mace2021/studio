@@ -39,7 +39,7 @@ export type GanttTask = {
 
 
 // Kanban Types
-export interface Task {
+export interface KanbanTask {
     id: string;
     content: string;
     description?: string;

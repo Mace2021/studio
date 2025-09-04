@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PaymentDialog } from '@/components/dashboard/payment-dialog';
 import { SuccessDialog } from '@/components/dashboard/success-dialog';
-import { Check } from 'lucide-react';
+import { Check, PartyPopper } from 'lucide-react';
+import Link from 'next/link';
 
 const premiumFeatures = [
     "Unlimited PDF Exports",
@@ -20,7 +21,7 @@ const premiumFeatures = [
 
 
 export default function SubscribePage() {
-    const { user } = useAuth();
+    const { user, isSubscribed } = useAuth();
     const router = useRouter();
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -52,28 +53,44 @@ export default function SubscribePage() {
             <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
-                        <CardTitle className="text-3xl font-headline">Unlock Premium</CardTitle>
+                        <CardTitle className="text-3xl font-headline">
+                            {isSubscribed ? "You're a Premium Member!" : "Unlock Premium"}
+                        </CardTitle>
                         <CardDescription>
-                            Get unlimited access to all features with our simple monthly subscription.
+                            {isSubscribed 
+                                ? "Thank you for your support. You have access to all premium features." 
+                                : "Get unlimited access to all features with our simple monthly subscription."
+                            }
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="mb-6">
-                            <p className="text-4xl font-bold text-center mb-2">
-                                $5<span className="text-lg text-muted-foreground">/month</span>
-                            </p>
-                        </div>
-                        <ul className="space-y-3 mb-8">
-                           {premiumFeatures.map((feature, index) => (
-                             <li key={index} className="flex items-center gap-3">
-                                <Check className="h-5 w-5 text-primary" />
-                                <span className="text-muted-foreground">{feature}</span>
-                            </li>
-                           ))}
-                        </ul>
-                         <Button onClick={handleSubscribeClick} className="w-full">
-                            {user ? 'Subscribe Now' : 'Login to Subscribe'}
-                        </Button>
+                        {isSubscribed ? (
+                            <div className="flex flex-col items-center text-center">
+                                <PartyPopper className="h-16 w-16 text-primary mb-4" />
+                                <Button asChild>
+                                    <Link href="/">Go to Dashboard</Link>
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mb-6">
+                                    <p className="text-4xl font-bold text-center mb-2">
+                                        $5<span className="text-lg text-muted-foreground">/month</span>
+                                    </p>
+                                </div>
+                                <ul className="space-y-3 mb-8">
+                                {premiumFeatures.map((feature, index) => (
+                                    <li key={index} className="flex items-center gap-3">
+                                        <Check className="h-5 w-5 text-primary" />
+                                        <span className="text-muted-foreground">{feature}</span>
+                                    </li>
+                                ))}
+                                </ul>
+                                <Button onClick={handleSubscribeClick} className="w-full">
+                                    {user ? 'Subscribe Now' : 'Login to Subscribe'}
+                                </Button>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             </div>

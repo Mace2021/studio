@@ -13,7 +13,7 @@ import { addDays } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart, Sheet } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import type { Task } from '@/lib/types';
+import type { GanttTask as Task } from '@/lib/types';
 import { GanttDisplay } from '@/components/gantt/gantt-display';
 import { EditTaskDialog } from '@/components/gantt/edit-task-dialog';
 import { ShareDialog } from '@/components/gantt/share-dialog';
@@ -167,7 +167,7 @@ const FeatureMenuItem = ({ title, icon: Icon, onClick, href }: { title: string; 
 }
 
 export default function GanttPage() {
-  const { user } = useAuth();
+  const { user, isSubscribed } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [view, setView] = useState<View>('week');
@@ -232,7 +232,7 @@ export default function GanttPage() {
     }
   }
 
-  if (!user) {
+  if (!user || !isSubscribed) {
       return (
         <>
             <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
@@ -248,11 +248,11 @@ export default function GanttPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="mb-4">
-                            Log in to get unlimited access to this tool and create powerful project timelines.
+                           {user ? "Upgrade to a premium account to create powerful project timelines." : "Log in to subscribe and get unlimited access to this tool."}
                         </p>
-                        <Button onClick={handleLoginClick}>
+                        <Button onClick={user ? () => router.push('/subscribe') : handleLoginClick}>
                                 <Sparkles className="mr-2 h-4 w-4" />
-                                Login to Use
+                                {user ? 'Subscribe' : 'Login to Use'}
                         </Button>
                     </CardContent>
                 </Card>
@@ -351,5 +351,3 @@ export default function GanttPage() {
     </div>
   );
 }
-
-    
