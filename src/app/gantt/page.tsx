@@ -6,11 +6,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addDays } from 'date-fns';
-import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
+import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { Task } from '@/lib/types';
@@ -147,6 +147,29 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
     </TooltipProvider>
 );
 
+const FeatureMenuItem = ({ title, icon: Icon, comingSoon }: { title: string; icon: React.ElementType, comingSoon?: boolean }) => {
+    const item = (
+         <DropdownMenuItem disabled={comingSoon} className="gap-2">
+            <Icon className="h-4 w-4" />
+            <span>{title}</span>
+        </DropdownMenuItem>
+    )
+
+    if (comingSoon) {
+        return (
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>{item}</TooltipTrigger>
+                    <TooltipContent>
+                        <p>Coming Soon!</p>
+                    </TooltipContent>
+                </Tooltip>
+             </TooltipProvider>
+        )
+    }
+    return item;
+}
+
 export default function GanttPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -258,6 +281,23 @@ export default function GanttPage() {
            <div className="flex flex-wrap items-center gap-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Features
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Collaboration</DropdownMenuLabel>
+                        <FeatureMenuItem title="Share Chart" icon={Share} comingSoon />
+                        <FeatureMenuItem title="Manage Roles" icon={Users} comingSoon />
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Analysis</DropdownMenuLabel>
+                        <FeatureMenuItem title="View Insights" icon={BarChart} comingSoon />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                         <Button variant="outline" disabled={!templates}>
                             Templates
                             <ChevronDown className="ml-2 h-4 w-4" />
@@ -307,3 +347,5 @@ export default function GanttPage() {
     </div>
   );
 }
+
+    
