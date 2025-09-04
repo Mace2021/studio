@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import * as xlsx from 'xlsx';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { addDays } from 'date-fns';
-import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart, Sheet } from 'lucide-react';
+import { addDays, parseISO } from 'date-fns';
+import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart, Sheet, FileDown } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { GanttTask as Task } from '@/lib/types';
@@ -183,16 +184,36 @@ export default function GanttPage() {
   }, [tasks, showCriticalPath]);
 
    useEffect(() => {
-    // Ensure templates are generated only on the client
     setTemplates(getTemplates());
-  }, []);
-  
-   useEffect(() => {
-    // Load a default template on initial mount
-    if(templates && tasks.length === 0) {
-        setTasks(templates.marketingCampaign);
+    const savedData = localStorage.getItem('ganttChartData');
+    if (savedData) {
+        const { tasks: savedTasks, timestamp } = JSON.parse(savedData);
+        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        if (new Date().getTime() - timestamp < thirtyDays) {
+            // Convert date strings back to Date objects
+            const revivedTasks = savedTasks.map((task: any) => ({
+                ...task,
+                start: parseISO(task.start),
+                end: parseISO(task.end),
+            }));
+            setTasks(revivedTasks);
+            return;
+        }
     }
-   }, [templates, tasks.length]);
+    // Load default if no valid saved data
+    setTasks(getTemplates().marketingCampaign);
+  }, []);
+
+  useEffect(() => {
+      // Save to localStorage whenever tasks change
+      if (tasks.length > 0) {
+        const dataToSave = {
+            tasks: tasks,
+            timestamp: new Date().getTime(),
+        };
+        localStorage.setItem('ganttChartData', JSON.stringify(dataToSave));
+      }
+  }, [tasks]);
 
 
   const handleAddTask = (name: string) => {
@@ -230,6 +251,24 @@ export default function GanttPage() {
     if(templates) {
         setTasks(templates[templateName]);
     }
+  }
+
+  const handleExport = () => {
+    const dataToExport = tasks.map(task => ({
+        ID: task.id,
+        Name: task.name,
+        'Start Date': task.start,
+        'End Date': task.end,
+        Type: task.type,
+        Progress: `${task.progress}%`,
+        Dependencies: task.dependencies.join(', '),
+        Assignee: task.assignee || 'N/A',
+    }));
+
+    const worksheet = xlsx.utils.json_to_sheet(dataToExport);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Gantt Chart Tasks");
+    xlsx.writeFile(workbook, "GanttChartExport.xlsx");
   }
 
   if (!user || !isSubscribed) {
@@ -294,8 +333,9 @@ export default function GanttPage() {
                         <FeatureMenuItem title="Share Chart" icon={Share} onClick={() => setIsShareOpen(true)} />
                         <FeatureMenuItem title="Manage Roles" icon={Users} onClick={() => setIsRolesOpen(true)} />
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Analysis</DropdownMenuLabel>
+                        <DropdownMenuLabel>Analysis & Export</DropdownMenuLabel>
                         <FeatureMenuItem title="View Insights" icon={BarChart} onClick={() => setIsInsightsOpen(true)} />
+                        <FeatureMenuItem title="Export to Excel" icon={FileDown} onClick={handleExport} />
                         <FeatureMenuItem title="Kanban Board" icon={Sheet} href="/kanban" />
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -351,3 +391,5 @@ export default function GanttPage() {
     </div>
   );
 }
+
+    
