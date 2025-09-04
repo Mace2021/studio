@@ -155,14 +155,14 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, onEditTask,
   return (
     <Xwrapper>
         <div className="border rounded-lg bg-card overflow-hidden">
-            <div className="grid" style={{ gridTemplateColumns: `minmax(350px, 1.5fr) 4fr`}}>
-                <div className="bg-muted/50 border-r">
+            <div className="block md:grid md:grid-cols-[minmax(350px,1.5fr)_4fr]">
+                <div className="bg-muted/50 border-b md:border-b-0 md:border-r">
                     <div className="grid grid-cols-5 p-2 h-16 items-center font-semibold border-b text-sm">
                         <div className="col-span-3">Tasks</div>
                         <div className="col-span-2 text-center">Assignee</div>
                     </div>
                 </div>
-                <div className="overflow-x-auto bg-muted/30">
+                <div className="overflow-x-auto bg-muted/30 hidden md:block">
                     <div className="sticky top-0 z-20 bg-card/90 backdrop-blur-sm">
                     {timelineHeaders.map((header, i) => (
                         <div key={i} className="flex flex-col whitespace-nowrap">
@@ -177,7 +177,7 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, onEditTask,
                     </div>
                 </div>
 
-                <div className="bg-muted/50 border-r overflow-y-auto" style={{maxHeight: '60vh'}}>
+                <div className="bg-muted/50 md:border-r overflow-y-auto" style={{maxHeight: '60vh'}}>
                     {processedTasks.map((task) => (
                         <div
                           id={`task-name-${task.id}`}
@@ -223,6 +223,18 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, onEditTask,
                     </div>
                 </div>
                 <div className="overflow-x-auto overflow-y-auto" style={{maxHeight: 'calc(60vh + 48px)'}}>
+                     <div className="md:hidden sticky top-0 z-20 bg-card/90 backdrop-blur-sm">
+                    {timelineHeaders.map((header, i) => (
+                        <div key={i} className="flex flex-col whitespace-nowrap">
+                            <div className="p-2 font-semibold text-center border-b text-sm">{header.main}</div>
+                            <div className="grid" style={{gridTemplateColumns: `repeat(${header.sub.length}, minmax(60px, 1fr))`}}>
+                                {header.sub.map((sub, j) => (
+                                    <div key={j} className="p-1.5 text-xs text-center border-b border-r text-muted-foreground">{sub}</div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                    </div>
                     <div className="relative">
                         {/* Grid lines */}
                         <div className="absolute inset-0 grid grid-cols-1">

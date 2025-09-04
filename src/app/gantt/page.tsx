@@ -281,7 +281,7 @@ export default function GanttPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart</h1>
             <p className="text-muted-foreground">Plan and visualize your project timeline.</p>
           </div>
-           <div className="flex flex-wrap items-center gap-4">
+           <div className="flex flex-col sm:flex-row flex-wrap items-center gap-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline">
@@ -326,7 +326,7 @@ export default function GanttPage() {
                          />
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full md:w-auto">
+                <Tabs value={view} onValueChange={(value) => setView(value as View)} className="w-full sm:w-auto">
                     <TabsList>
                         <TabsTrigger value="day">Day</TabsTrigger>
                         <TabsTrigger value="week">Week</TabsTrigger>
