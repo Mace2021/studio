@@ -72,49 +72,7 @@ export default function TutorialPage() {
         </CardContent>
       </Card>
       
-       <Card className="w-full max-w-4xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-            <GanttChartSquare className="h-6 w-6 text-primary" />
-            Using the Gantt Chart
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            {ganttSteps.map((step, index) => (
-                 <div key={index} className="flex items-start gap-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
-                        {index + 1}
-                    </div>
-                    <div>
-                        <h3 className="font-semibold">{step.title}</h3>
-                        <p className="text-muted-foreground text-sm">{step.description}</p>
-                    </div>
-                </div>
-            ))}
-        </CardContent>
-      </Card>
-
-      <Card className="w-full max-w-4xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
-            <Sheet className="h-6 w-6 text-primary" />
-            Using the Kanban Board
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            {kanbanSteps.map((step, index) => (
-                 <div key={index} className="flex items-start gap-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
-                        {index + 1}
-                    </div>
-                    <div>
-                        <h3 className="font-semibold">{step.title}</h3>
-                        <p className="text-muted-foreground text-sm">{step.description}</p>
-                    </div>
-                </div>
-            ))}
-        </CardContent>
-      </Card>
+      
 
        <Card className="w-full max-w-4xl">
         <CardHeader>
@@ -176,6 +134,51 @@ export default function TutorialPage() {
             </div>
         </CardContent>
       </Card>
+      <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <GanttChartSquare className="h-6 w-6 text-primary" />
+            Using the Gantt Chart
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {ganttSteps.map((step, index) => (
+                 <div key={index} className="flex items-start gap-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                        {index + 1}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-muted-foreground text-sm">{step.description}</p>
+                    </div>
+                </div>
+            ))}
+        </CardContent>
+      </Card>
+
+      <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <Sheet className="h-6 w-6 text-primary" />
+            Using the Kanban Board
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {kanbanSteps.map((step, index) => (
+                 <div key={index} className="flex items-start gap-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                        {index + 1}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-muted-foreground text-sm">{step.description}</p>
+                    </div>
+                </div>
+            ))}
+        </CardContent>
+      </Card>
     </div>
+
+    
   );
 }
