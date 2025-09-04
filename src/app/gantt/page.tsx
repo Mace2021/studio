@@ -10,12 +10,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addDays } from 'date-fns';
-import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart } from 'lucide-react';
+import { Plus, Crown, Sparkles, ChevronDown, Share, Users, BarChart, Sheet } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { Task } from '@/lib/types';
 import { GanttDisplay } from '@/components/gantt/gantt-display';
 import { EditTaskDialog } from '@/components/gantt/edit-task-dialog';
+import { ShareDialog } from '@/components/gantt/share-dialog';
+import { RolesDialog } from '@/components/gantt/roles-dialog';
+import { InsightsDialog } from '@/components/gantt/insights-dialog';
 
 
 type View = 'day' | 'week' | 'month';
@@ -147,27 +150,13 @@ const TemplateMenuItem = ({ title, description, onClick }: { title: string; desc
     </TooltipProvider>
 );
 
-const FeatureMenuItem = ({ title, icon: Icon, comingSoon }: { title: string; icon: React.ElementType, comingSoon?: boolean }) => {
-    const item = (
-         <DropdownMenuItem disabled={comingSoon} className="gap-2">
+const FeatureMenuItem = ({ title, icon: Icon, onClick }: { title: string; icon: React.ElementType, onClick: () => void }) => {
+    return (
+         <DropdownMenuItem onClick={onClick} className="gap-2">
             <Icon className="h-4 w-4" />
             <span>{title}</span>
         </DropdownMenuItem>
     )
-
-    if (comingSoon) {
-        return (
-             <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>{item}</TooltipTrigger>
-                    <TooltipContent>
-                        <p>Coming Soon!</p>
-                    </TooltipContent>
-                </Tooltip>
-             </TooltipProvider>
-        )
-    }
-    return item;
 }
 
 export default function GanttPage() {
@@ -178,6 +167,9 @@ export default function GanttPage() {
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isRolesOpen, setIsRolesOpen] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
 
   const criticalPath = useMemo(() => {
     return showCriticalPath ? findCriticalPath(tasks) : new Set<number>();
@@ -273,6 +265,10 @@ export default function GanttPage() {
                 onSave={handleSaveTask}
             />
         )}
+        <ShareDialog isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
+        <RolesDialog isOpen={isRolesOpen} onClose={() => setIsRolesOpen(false)} />
+        <InsightsDialog isOpen={isInsightsOpen} onClose={() => setIsInsightsOpen(false)} tasks={tasks} />
+
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart</h1>
@@ -288,11 +284,12 @@ export default function GanttPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Collaboration</DropdownMenuLabel>
-                        <FeatureMenuItem title="Share Chart" icon={Share} />
-                        <FeatureMenuItem title="Manage Roles" icon={Users} />
+                        <FeatureMenuItem title="Share Chart" icon={Share} onClick={() => setIsShareOpen(true)} />
+                        <FeatureMenuItem title="Manage Roles" icon={Users} onClick={() => setIsRolesOpen(true)} />
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Analysis</DropdownMenuLabel>
-                        <FeatureMenuItem title="View Insights" icon={BarChart} />
+                        <FeatureMenuItem title="View Insights" icon={BarChart} onClick={() => setIsInsightsOpen(true)} />
+                        <FeatureMenuItem title="Kanban Board" icon={Sheet} onClick={() => {}} />
                     </DropdownMenuContent>
                 </DropdownMenu>
 
