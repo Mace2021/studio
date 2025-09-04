@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Info, Mail, Lightbulb, LogIn, UserPlus, LogOut, GanttChartSquare, Bot, Sheet } from "lucide-react";
+import { Home, Info, Mail, Lightbulb, LogIn, UserPlus, LogOut, GanttChartSquare, Bot, Sheet, Star } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,18 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuItem>
           ))}
+           <SidebarMenuItem>
+              <Link href="/subscribe">
+                <SidebarMenuButton
+                  isActive={pathname === '/subscribe'}
+                  className="w-full font-bold text-primary"
+                  variant="outline"
+                >
+                  <Star className="h-4 w-4" />
+                  <span>Subscribe</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="mt-auto p-2">
