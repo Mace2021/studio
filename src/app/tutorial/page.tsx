@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lightbulb, FileUp, MousePointerClick, Download, BarChart, Settings } from "lucide-react";
+import { Lightbulb, FileUp, MousePointerClick, Download, BarChart, Settings, GanttChartSquare, Sheet } from "lucide-react";
 import Image from 'next/image';
 
 const tutorialSteps = [
@@ -29,7 +29,23 @@ const tutorialSteps = [
         title: "Export Your PDF",
         description: "Once your dashboard is ready, click the 'Export PDF' button. You can choose the page orientation and layout to create a professional, shareable report. Then add your notes and comments below.",
     }
-]
+];
+
+const ganttSteps = [
+    { title: "Navigate", description: "Access the Gantt chart from the sidebar. Note: This is a premium feature and requires a subscription." },
+    { title: "Add & Edit Tasks", description: "Add new tasks at the bottom of the list. Click the pencil icon next to any task to edit its name, dates, progress, assignee, and dependencies in a detailed dialog." },
+    { title: "Switch Views", description: "Use the Day, Week, and Month tabs to change the timeline's zoom level to fit your planning needs." },
+    { title: "Critical Path", description: "Toggle the 'Show Critical Path' switch to highlight the sequence of tasks that determines the project's total duration." },
+    { title: "Use Features", description: "Use the 'Features' dropdown to share your chart, manage collaborators, view project insights, or export your task list to Excel." },
+];
+
+const kanbanSteps = [
+     { title: "Navigate", description: "Access the Kanban board from the sidebar to visualize your workflow." },
+     { title: "Add Tasks", description: "Click the '+' icon at the top of any column to add a new task. You can set a title, description, and start/end dates." },
+     { title: "Move Tasks", description: "Drag and drop tasks between columns ('To Do', 'In Progress', 'Done') to instantly update their status." },
+     { title: "Edit Tasks", description: "Hover over a task and click the pencil icon to edit its title, description, or dates directly on the card." },
+     { title: "Save & Export", description: "Your board is automatically saved in your browser. Use the 'Export to Excel' button to download your current board state." },
+];
 
 export default function TutorialPage() {
   return (
@@ -38,7 +54,7 @@ export default function TutorialPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl font-headline">
             <Lightbulb className="h-6 w-6 text-primary" />
-            How to use Visualdash.net
+            How to use the Dashboard
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -46,6 +62,50 @@ export default function TutorialPage() {
                  <div key={index} className="flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 text-primary">
                         <step.icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-muted-foreground text-sm">{step.description}</p>
+                    </div>
+                </div>
+            ))}
+        </CardContent>
+      </Card>
+      
+       <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <GanttChartSquare className="h-6 w-6 text-primary" />
+            Using the Gantt Chart
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {ganttSteps.map((step, index) => (
+                 <div key={index} className="flex items-start gap-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                        {index + 1}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-muted-foreground text-sm">{step.description}</p>
+                    </div>
+                </div>
+            ))}
+        </CardContent>
+      </Card>
+
+      <Card className="w-full max-w-4xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl font-headline">
+            <Sheet className="h-6 w-6 text-primary" />
+            Using the Kanban Board
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {kanbanSteps.map((step, index) => (
+                 <div key={index} className="flex items-start gap-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+                        {index + 1}
                     </div>
                     <div>
                         <h3 className="font-semibold">{step.title}</h3>
