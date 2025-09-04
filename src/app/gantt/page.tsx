@@ -288,11 +288,11 @@ export default function GanttPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Collaboration</DropdownMenuLabel>
-                        <FeatureMenuItem title="Share Chart" icon={Share} comingSoon />
-                        <FeatureMenuItem title="Manage Roles" icon={Users} comingSoon />
+                        <FeatureMenuItem title="Share Chart" icon={Share} />
+                        <FeatureMenuItem title="Manage Roles" icon={Users} />
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Analysis</DropdownMenuLabel>
-                        <FeatureMenuItem title="View Insights" icon={BarChart} comingSoon />
+                        <FeatureMenuItem title="View Insights" icon={BarChart} />
                     </DropdownMenuContent>
                 </DropdownMenu>
 
