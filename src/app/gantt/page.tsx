@@ -97,35 +97,35 @@ const getTemplates = (): Record<string, Task[]> => {
     const year = today.getFullYear();
     return {
         marketingCampaign: [
-            { id: 1, name: 'Marketing Campaign Draft', start: new Date(year, 5, 20), end: new Date(year, 5, 27), type: 'task', progress: 100, dependencies: [], parentId: null },
-            { id: 2, name: 'New Ad Campaign', start: new Date(year, 5, 28), end: new Date(year, 5, 28), type: 'milestone', progress: 100, dependencies: [1], parentId: null },
-            { id: 3, name: 'Sales Team Group', start: new Date(year, 6, 1), end: new Date(year, 6, 11), type: 'group', progress: 0, dependencies: [2], parentId: null },
-            { id: 4, name: 'High Resolution Banner Printing', start: new Date(year, 6, 1), end: new Date(year, 6, 8), type: 'task', progress: 50, dependencies: [], parentId: 3 },
-            { id: 5, name: 'Sales reports for sales team group meeting', start: new Date(year, 6, 9), end: new Date(year, 6, 11), type: 'task', progress: 20, dependencies: [4], parentId: 3 },
-            { id: 6, name: 'New Summer Banner', start: new Date(year, 6, 5), end: new Date(year, 6, 12), type: 'task', progress: 30, dependencies: [], parentId: 3 }
+            { id: 1, name: 'Marketing Campaign Draft', start: new Date(year, 5, 20), end: new Date(year, 5, 27), type: 'task', progress: 100, dependencies: [], parentId: null, assignee: 'Alice' },
+            { id: 2, name: 'New Ad Campaign', start: new Date(year, 5, 28), end: new Date(year, 5, 28), type: 'milestone', progress: 100, dependencies: [1], parentId: null, assignee: 'Alice' },
+            { id: 3, name: 'Sales Team Group', start: new Date(year, 6, 1), end: new Date(year, 6, 11), type: 'group', progress: 0, dependencies: [2], parentId: null, assignee: 'Team Lead' },
+            { id: 4, name: 'High Resolution Banner Printing', start: new Date(year, 6, 1), end: new Date(year, 6, 8), type: 'task', progress: 50, dependencies: [], parentId: 3, assignee: 'Bob' },
+            { id: 5, name: 'Sales reports for sales team group meeting', start: new Date(year, 6, 9), end: new Date(year, 6, 11), type: 'task', progress: 20, dependencies: [4], parentId: 3, assignee: 'Charlie' },
+            { id: 6, name: 'New Summer Banner', start: new Date(year, 6, 5), end: new Date(year, 6, 12), type: 'task', progress: 30, dependencies: [], parentId: 3, assignee: 'David' }
         ],
         projectDevelopment: [
-            { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], parentId: null },
-            { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], parentId: null },
-            { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2], parentId: null },
-            { id: 4, name: 'Development', start: addDays(today, 22), end: addDays(today, 55), type: 'group', progress: 0, dependencies: [3], parentId: null},
-            { id: 5, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [], parentId: 4 },
-            { id: 6, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [], parentId: 4 },
-            { id: 7, name: 'API Integration', start: addDays(today, 51), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [5, 6], parentId: 4 },
-            { id: 8, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [7], parentId: null },
-            { id: 9, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [8], parentId: null },
+            { id: 1, name: 'Requirement Gathering', start: today, end: addDays(today, 7), type: 'task', progress: 90, dependencies: [], parentId: null, assignee: 'Emily' },
+            { id: 2, name: 'UI/UX Design', start: addDays(today, 8), end: addDays(today, 20), type: 'task', progress: 60, dependencies: [1], parentId: null, assignee: 'Frank' },
+            { id: 3, name: 'Design Approval', start: addDays(today, 21), end: addDays(today, 21), type: 'milestone', progress: 100, dependencies: [2], parentId: null, assignee: 'Grace' },
+            { id: 4, name: 'Development', start: addDays(today, 22), end: addDays(today, 55), type: 'group', progress: 0, dependencies: [3], parentId: null, assignee: 'Team Lead' },
+            { id: 5, name: 'Frontend Development', start: addDays(today, 22), end: addDays(today, 45), type: 'task', progress: 30, dependencies: [], parentId: 4, assignee: 'Heidi' },
+            { id: 6, name: 'Backend Development', start: addDays(today, 22), end: addDays(today, 50), type: 'task', progress: 40, dependencies: [], parentId: 4, assignee: 'Ivan' },
+            { id: 7, name: 'API Integration', start: addDays(today, 51), end: addDays(today, 55), type: 'task', progress: 15, dependencies: [5, 6], parentId: 4, assignee: 'Judy' },
+            { id: 8, name: 'UAT', start: addDays(today, 56), end: addDays(today, 63), type: 'task', progress: 0, dependencies: [7], parentId: null, assignee: 'Mallory' },
+            { id: 9, name: 'Go Live', start: addDays(today, 65), end: addDays(today, 65), type: 'milestone', progress: 0, dependencies: [8], parentId: null, assignee: 'Oscar' },
         ],
         eventPlanning: [
-            { id: 1, name: 'Planning Phase', start: today, end: addDays(today, 15), type: 'group', progress: 0, dependencies: [], parentId: null },
-            { id: 2, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], parentId: 1 },
-            { id: 3, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [2], parentId: 1 },
-            { id: 4, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [3], parentId: 1 },
-            { id: 5, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [4], parentId: null },
-            { id: 6, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [3], parentId: null },
-            { id: 7, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [5, 6], parentId: null },
-            { id: 8, name: 'Event Execution', start: addDays(today, 58), end: addDays(today, 61), type: 'group', progress: 0, dependencies: [7], parentId: null },
-            { id: 9, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [], parentId: 8 },
-            { id: 10, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [9], parentId: 8 },
+            { id: 1, name: 'Planning Phase', start: today, end: addDays(today, 15), type: 'group', progress: 0, dependencies: [], parentId: null, assignee: 'Peggy' },
+            { id: 2, name: 'Define Event Goals', start: today, end: addDays(today, 3), type: 'task', progress: 100, dependencies: [], parentId: 1, assignee: 'Quentin' },
+            { id: 3, name: 'Budget Finalization', start: addDays(today, 4), end: addDays(today, 7), type: 'task', progress: 95, dependencies: [2], parentId: 1, assignee: 'Rupert' },
+            { id: 4, name: 'Venue Selection & Booking', start: addDays(today, 8), end: addDays(today, 15), type: 'task', progress: 80, dependencies: [3], parentId: 1, assignee: 'Sybil' },
+            { id: 5, name: 'Vendor Contracts', start: addDays(today, 16), end: addDays(today, 30), type: 'task', progress: 50, dependencies: [4], parentId: null, assignee: 'Trent' },
+            { id: 6, name: 'Marketing Campaign Launch', start: addDays(today, 25), end: addDays(today, 55), type: 'task', progress: 25, dependencies: [3], parentId: null, assignee: 'Uma' },
+            { id: 7, name: 'Ticket Sales Live', start: addDays(today, 31), end: addDays(today, 31), type: 'milestone', progress: 100, dependencies: [5, 6], parentId: null, assignee: 'Victor' },
+            { id: 8, name: 'Event Execution', start: addDays(today, 58), end: addDays(today, 61), type: 'group', progress: 0, dependencies: [7], parentId: null, assignee: 'Walter' },
+            { id: 9, name: 'On-site Prep', start: addDays(today, 58), end: addDays(today, 60), type: 'task', progress: 0, dependencies: [], parentId: 8, assignee: 'Xavier' },
+            { id: 10, name: 'Event Day', start: addDays(today, 61), end: addDays(today, 61), type: 'task', progress: 0, dependencies: [9], parentId: 8, assignee: 'Yvonne' },
         ],
     }
 };
@@ -286,3 +286,4 @@ export default function GanttPage() {
     </div>
   );
 }
+

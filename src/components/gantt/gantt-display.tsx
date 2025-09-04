@@ -4,12 +4,14 @@
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Xarrow, { Xwrapper } from 'react-xarrows';
 import type { Task } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 
 type View = 'day' | 'week' | 'month';
 
@@ -153,9 +155,12 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPat
   return (
     <Xwrapper>
         <div className="border rounded-lg bg-card overflow-hidden">
-            <div className="grid" style={{ gridTemplateColumns: `minmax(250px, 1.5fr) 4fr`}}>
+            <div className="grid" style={{ gridTemplateColumns: `minmax(350px, 1.5fr) 4fr`}}>
                 <div className="bg-muted/50 border-r">
-                    <div className="p-2 h-16 flex items-center font-semibold border-b text-sm">Tasks</div>
+                    <div className="grid grid-cols-5 p-2 h-16 items-center font-semibold border-b text-sm">
+                        <div className="col-span-3">Tasks</div>
+                        <div className="col-span-2 text-center">Assignee</div>
+                    </div>
                 </div>
                 <div className="overflow-x-auto bg-muted/30">
                     <div className="sticky top-0 z-20 bg-card/90 backdrop-blur-sm">
@@ -179,12 +184,29 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPat
                           key={task.id}
                           className="h-12 flex items-center justify-between group text-sm border-b"
                           style={{ paddingLeft: `${(task as any).level * 1.5 + 0.5}rem`}}
-                          title={task.name}
                         >
-                            <span className={cn("truncate", {"font-semibold": task.type === 'group'})}>{task.name}</span>
-                             <Button variant="ghost" size="icon" className="h-6 w-6 mr-1 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
-                                <Plus className="h-4 w-4 rotate-45" />
-                            </Button>
+                            <span className={cn("truncate", {"font-semibold": task.type === 'group'})} title={task.name}>{task.name}</span>
+                            <div className="flex items-center gap-2 pr-2">
+                                {task.assignee && (
+                                     <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarFallback className="text-xs">
+                                                        {task.assignee.charAt(0).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{task.assignee}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                     </TooltipProvider>
+                                )}
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
+                                    <Plus className="h-4 w-4 rotate-45" />
+                                </Button>
+                            </div>
                         </div>
                     ))}
                      <div className="h-12 flex items-center p-2">
@@ -247,6 +269,7 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPat
                                       <p>Start: {format(task.start, 'MMM d, yyyy')}</p>
                                       <p>End: {format(task.end, 'MMM d, yyyy')}</p>
                                       <p>Progress: {task.progress}%</p>
+                                      {task.assignee && <p>Assignee: {task.assignee}</p>}
                                        {isCritical && <p className="text-red-500 font-bold">On Critical Path</p>}
                                   </TooltipContent>
                                   </Tooltip>
