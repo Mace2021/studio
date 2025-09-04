@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, addDays } from 'date-fns';
+import { addDays } from 'date-fns';
 import { Plus, Crown, Sparkles, ChevronDown } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { Task } from '@/lib/types';
 import { GanttDisplay } from '@/components/gantt/gantt-display';
+import { EditTaskDialog } from '@/components/gantt/edit-task-dialog';
 
 
 type View = 'day' | 'week' | 'month';
@@ -153,6 +154,7 @@ export default function GanttPage() {
   const [view, setView] = useState<View>('week');
   const [templates, setTemplates] = useState<ReturnType<typeof getTemplates> | null>(null);
   const [showCriticalPath, setShowCriticalPath] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   const criticalPath = useMemo(() => {
     return showCriticalPath ? findCriticalPath(tasks) : new Set<number>();
@@ -187,6 +189,15 @@ export default function GanttPage() {
           ...task,
           dependencies: task.dependencies.filter(depId => depId !== id)
       })));
+  }
+
+  const handleEditTask = (task: Task) => {
+    setTaskToEdit(task);
+  }
+
+  const handleSaveTask = (updatedTask: Task) => {
+    setTasks(currentTasks => currentTasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    setTaskToEdit(null);
   }
   
   const handleLoginClick = () => {
@@ -230,6 +241,15 @@ export default function GanttPage() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
+        {taskToEdit && (
+            <EditTaskDialog 
+                task={taskToEdit}
+                allTasks={tasks}
+                isOpen={!!taskToEdit}
+                onClose={() => setTaskToEdit(null)}
+                onSave={handleSaveTask}
+            />
+        )}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gantt Chart</h1>
@@ -281,9 +301,9 @@ export default function GanttPage() {
             view={view}
             onAddTask={handleAddTask}
             onDeleteTask={handleDeleteTask}
+            onEditTask={handleEditTask}
             criticalPath={criticalPath}
         />
     </div>
   );
 }
-

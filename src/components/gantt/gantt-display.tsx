@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import { format, differenceInDays, addDays, differenceInWeeks, differenceInMonths, startOfWeek, startOfMonth } from 'date-fns';
-import { Plus, User } from 'lucide-react';
+import { Plus, User, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Xarrow, { Xwrapper } from 'react-xarrows';
 import type { Task } from '@/lib/types';
@@ -23,7 +23,7 @@ const COLORS = [
 ];
 
 
-export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; criticalPath: Set<number>; }) => {
+export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, onEditTask, criticalPath }: { tasks: Task[]; view: View; onAddTask: (name: string) => void; onDeleteTask: (id: number) => void; onEditTask: (task: Task) => void; criticalPath: Set<number>; }) => {
     const [newTaskName, setNewTaskName] = useState('');
 
     const processedTasks = useMemo(() => {
@@ -203,6 +203,9 @@ export const GanttDisplay = ({ tasks, view, onAddTask, onDeleteTask, criticalPat
                                         </Tooltip>
                                      </TooltipProvider>
                                 )}
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onEditTask(task)}>
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
                                     <Plus className="h-4 w-4 rotate-45" />
                                 </Button>
