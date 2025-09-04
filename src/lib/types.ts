@@ -23,16 +23,29 @@ export interface ChartConfig {
 
 export type DataRow = Record<string, string | number>;
 
-export type TaskType = 'task' | 'milestone' | 'group';
+export type GanttTaskType = 'task' | 'milestone' | 'group';
 
-export type Task = {
+export type GanttTask = {
   id: number;
   name: string;
   start: Date;
   end: Date;
-  type: TaskType;
+  type: GanttTaskType;
   progress: number; // 0-100
   dependencies: number[]; // Array of task IDs
   assignee?: string;
   parentId?: number | null;
 };
+
+
+// Kanban Types
+export interface Task {
+    id: string;
+    content: string;
+    description?: string;
+}
+
+export interface Column {
+    id: string;
+    title: string;
+}
