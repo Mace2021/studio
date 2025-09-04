@@ -9,8 +9,8 @@ import { AddTaskButton } from './add-task-button';
 interface KanbanColumnProps {
   column: Column;
   tasks: Task[];
-  onAddTask: (columnId: string, content: string) => void;
-  onEditTask: (columnId: string, taskId: string, newContent: string, newDescription?: string) => void;
+  onAddTask: (columnId: string, content: string, start?: Date, end?: Date) => void;
+  onEditTask: (columnId: string, taskId: string, newContent: string, newDescription?: string, newStart?: Date, newEnd?: Date) => void;
   onDeleteTask: (columnId: string, taskId: string) => void;
 }
 
@@ -19,7 +19,7 @@ export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTas
     <div className="flex flex-col w-full md:w-80 bg-muted rounded-lg p-2 shrink-0">
       <div className="flex items-center justify-between p-2 mb-2">
         <h2 className="font-semibold text-lg">{column.title}</h2>
-        <AddTaskButton onAdd={(content) => onAddTask(column.id, content)} />
+        <AddTaskButton onAdd={(content, start, end) => onAddTask(column.id, content, start, end)} />
       </div>
       <Droppable droppableId={column.id}>
         {(provided, snapshot) => (
@@ -39,7 +39,7 @@ export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTas
                     <KanbanCard 
                         task={task} 
                         isDragging={snapshot.isDragging}
-                        onEdit={(newContent, newDescription) => onEditTask(column.id, task.id, newContent, newDescription)}
+                        onEdit={(newContent, newDescription, newStart, newEnd) => onEditTask(column.id, task.id, newContent, newDescription, newStart, newEnd)}
                         onDelete={() => onDeleteTask(column.id, task.id)}
                     />
                   </div>
