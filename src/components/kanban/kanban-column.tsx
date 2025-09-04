@@ -16,7 +16,7 @@ interface KanbanColumnProps {
 
 export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTask }: KanbanColumnProps) => {
   return (
-    <div className="flex flex-col w-80 bg-muted rounded-lg p-2">
+    <div className="flex flex-col w-full md:w-80 bg-muted rounded-lg p-2 shrink-0">
       <div className="flex items-center justify-between p-2 mb-2">
         <h2 className="font-semibold text-lg">{column.title}</h2>
         <AddTaskButton onAdd={(content) => onAddTask(column.id, content)} />

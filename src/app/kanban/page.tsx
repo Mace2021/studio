@@ -90,12 +90,12 @@ export default function KanbanPage() {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col h-[calc(100vh-4rem)] p-4 sm:p-6 md:p-8">
+        <div className="flex flex-col h-full p-4 sm:p-6 md:p-8">
             <div className="mb-6">
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Kanban Board</h1>
                 <p className="text-muted-foreground">Visualize your workflow and track task progress.</p>
             </div>
-            <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
+            <div className="flex flex-col md:flex-row flex-1 gap-6 overflow-x-auto md:pb-4">
                 {columns.map(column => (
                     <KanbanColumn 
                         key={column.id} 
