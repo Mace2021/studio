@@ -10,7 +10,7 @@ interface KanbanColumnProps {
   column: Column;
   tasks: Task[];
   onAddTask: (columnId: string, content: string) => void;
-  onEditTask: (columnId: string, taskId: string, newContent: string) => void;
+  onEditTask: (columnId: string, taskId: string, newContent: string, newDescription?: string) => void;
   onDeleteTask: (columnId: string, taskId: string) => void;
 }
 
@@ -39,7 +39,7 @@ export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTas
                     <KanbanCard 
                         task={task} 
                         isDragging={snapshot.isDragging}
-                        onEdit={(newContent) => onEditTask(column.id, task.id, newContent)}
+                        onEdit={(newContent, newDescription) => onEditTask(column.id, task.id, newContent, newDescription)}
                         onDelete={() => onDeleteTask(column.id, task.id)}
                     />
                   </div>

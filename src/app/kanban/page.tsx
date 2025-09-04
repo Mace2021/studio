@@ -67,16 +67,16 @@ export default function KanbanPage() {
     };
     
     const handleAddTask = (columnId: string, content: string) => {
-        const newTask = { id: `task-${Date.now()}`, content };
+        const newTask = { id: `task-${Date.now()}`, content, description: '' };
         setTasks(prev => ({
             ...prev,
             [columnId]: [...prev[columnId], newTask]
         }));
     }
     
-    const handleEditTask = (columnId: string, taskId: string, newContent: string) => {
+    const handleEditTask = (columnId: string, taskId: string, newContent: string, newDescription?: string) => {
         const newTasks = tasks[columnId].map(task => 
-            task.id === taskId ? { ...task, content: newContent } : task
+            task.id === taskId ? { ...task, content: newContent, description: newDescription } : task
         );
         setTasks(prev => ({ ...prev, [columnId]: newTasks }));
     }
