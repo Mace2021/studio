@@ -121,14 +121,12 @@ export default function InterviewerPage() {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
-            console.log('Camera stream cleaned up.');
         }
     }, []);
 
     // Effect for camera and speech recognition initialization
     useEffect(() => {
         const initialize = async () => {
-            console.log('Initializing camera and speech recognition...');
             cleanupStream();
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -140,9 +138,7 @@ export default function InterviewerPage() {
                     videoRef.current.srcObject = stream;
                 }
                 setHasCameraPermission(true);
-                console.log('Camera permission granted and stream attached.');
             } catch (error: any) {
-                console.error('Camera permission error:', error);
                 setHasCameraPermission(false);
                 toast({
                     variant: 'destructive',
@@ -175,7 +171,6 @@ export default function InterviewerPage() {
             
             recognition.onend = () => {
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
-                    console.log('Speech recognition ended unexpectedly, restarting...');
                     recognitionRef.current?.start();
                 }
             };
@@ -190,7 +185,7 @@ export default function InterviewerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
-    const generateAndPlayQuestion = async (questionText: string) => {
+    const generateAndPlayQuestion = useCallback(async (questionText: string) => {
         setInterviewState('generating-audio');
         try {
             const { audio, error } = await textToSpeech(questionText);
@@ -204,10 +199,21 @@ export default function InterviewerPage() {
             setInterviewState('preparing');
             startPrepTimer();
         }
-    };
+    }, [toast, startPrepTimer]);
+
+    useEffect(() => {
+        if (interviewState === 'playing-audio' && currentAudio && audioRef.current) {
+            audioRef.current.src = currentAudio;
+            audioRef.current.play().catch(error => {
+                console.error("Audio play failed:", error);
+                toast({ variant: 'destructive', title: 'Audio Playback Error', description: "Could not play the question audio. Please ensure your browser allows autoplay." });
+                handleAudioEnded(); // Proceed to next state even if audio fails
+            });
+        }
+    }, [interviewState, currentAudio, toast]);
     
     const handleStartInterview = async () => {
-        if (!hasCameraPermission) {
+        if (hasCameraPermission !== true) {
             toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please grant camera permission to start.' });
             return;
         }
@@ -262,7 +268,6 @@ export default function InterviewerPage() {
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = false;
                 recognitionRef.current.start();
-                console.log("Speech recognition started.");
             }
         } catch (error) {
             console.error("Error starting recording:", error);
@@ -271,14 +276,12 @@ export default function InterviewerPage() {
     };
 
     const stopRecording = () => {
-        console.log("Stopping recording...");
         if (mediaRecorderRef.current?.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
         if (recognitionRef.current) {
             stopRecognitionOnPurpose.current = true;
             recognitionRef.current.stop();
-            console.log("Speech recognition stopped purposefully.");
         }
     };
 
@@ -380,9 +383,9 @@ export default function InterviewerPage() {
                             {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button onClick={handleStartInterview} disabled={!hasCameraPermission}>
-                        {!hasCameraPermission ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                        {hasCameraPermission ? 'Start Interview' : 'Camera Loading...'}
+                    <Button onClick={handleStartInterview} disabled={hasCameraPermission !== true}>
+                        {hasCameraPermission !== true ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+                        {hasCameraPermission === true ? 'Start Interview' : 'Camera Loading...'}
                     </Button>
                 </div>
             </div>
@@ -454,7 +457,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} autoPlay hidden />}
+            <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
