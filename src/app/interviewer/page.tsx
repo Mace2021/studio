@@ -159,11 +159,12 @@ export default function InterviewerPage() {
           setCurrentAudio(result.audio);
           setInterviewState('listening');
         } else {
+           // The flow returned an error, so we handle it gracefully
            console.warn("Audio generation failed:", result.error);
            toast({ 
               variant: 'default', 
               title: 'Audio Generation Unavailable', 
-              description: 'Could not generate question audio. Starting interview without it.'
+              description: 'Could not generate question audio. Continuing without it.'
            });
            handleAudioEnded(); // Proceed without audio
         }
@@ -350,7 +351,7 @@ export default function InterviewerPage() {
             <AlertDescription>Please allow camera and microphone access to use this feature.</AlertDescription>
         </Alert>
     );
-    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing camera...</span></div>;
+    if (hasCameraPermission === null || !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing camera...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
@@ -381,14 +382,12 @@ export default function InterviewerPage() {
         <div className="w-full space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
                  <Card className="bg-muted/50 aspect-video flex items-center justify-center p-4">
-                   {isInterviewActive ? (
-                        <div className="text-center">
-                            <div className="relative w-32 h-32 mx-auto mb-4">
-                                <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
-                            </div>
-                            {renderInterviewerContent()}
+                   <div className="text-center">
+                        <div className="relative w-32 h-32 mx-auto mb-4">
+                            <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" fill sizes="128px" className="rounded-full object-cover" alt="Interviewer" />
                         </div>
-                   ) : renderInterviewerContent()}
+                        {renderInterviewerContent()}
+                    </div>
                 </Card>
                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
                     <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", interviewState === 'reviewing' ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
