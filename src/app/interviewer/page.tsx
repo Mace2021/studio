@@ -90,16 +90,12 @@ export default function InterviewerPage() {
   });
 
   const getCameraPermission = async () => {
-    if (hasCameraPermission === null) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setHasCameraPermission(true);
         
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => {
-            setIsCameraReady(true);
-          };
         }
 
       } catch (error: any) {
@@ -110,13 +106,7 @@ export default function InterviewerPage() {
         }
         setHasCameraPermission(false);
         setIsCameraReady(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
       }
-    }
   };
 
    useEffect(() => {
@@ -150,7 +140,7 @@ export default function InterviewerPage() {
       recognitionRef.current?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCameraPermission]);
+  }, []);
   
   useEffect(() => {
       if (interviewState === 'listening' && currentAudio && audioRef.current) {
@@ -170,10 +160,11 @@ export default function InterviewerPage() {
           setInterviewState('listening');
         } else {
            // The flow returned an error, so we handle it gracefully
+           console.warn("Audio generation failed:", result.error);
            toast({ 
               variant: 'default', 
-              title: 'Audio Generation Unavailable', 
-              description: 'Could not generate question audio. Continuing without it.'
+              title: 'Audio Unavailable', 
+              description: 'Could not generate question audio. Proceeding without it.'
            });
            handleAudioEnded(); // Proceed without audio
         }
@@ -313,6 +304,7 @@ export default function InterviewerPage() {
       // Reset camera state to trigger permission check if needed
       setHasCameraPermission(null);
       setIsCameraReady(false);
+      getCameraPermission();
   }
   
   const renderInterviewerContent = () => {
@@ -360,12 +352,12 @@ export default function InterviewerPage() {
               Please allow camera and microphone access to use this feature. 
               You may need to reload the page after granting permissions in your browser settings.
             </AlertDescription>
-            <Button variant="secondary" size="sm" className="mt-4" onClick={() => setHasCameraPermission(null)}>
+            <Button variant="secondary" size="sm" className="mt-4" onClick={getCameraPermission}>
                 Try Again
             </Button>
         </Alert>
     );
-    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
+    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
@@ -404,7 +396,7 @@ export default function InterviewerPage() {
                     </div>
                  </Card>
                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
-                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
+                    <video ref={videoRef} onCanPlay={() => setIsCameraReady(true)} className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
                     {(interviewState === 'reviewing' && lastAnswerUrl) && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
@@ -494,5 +486,3 @@ export default function InterviewerPage() {
     </div>
   );
 }
-
-    
