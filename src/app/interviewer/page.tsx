@@ -151,23 +151,30 @@ export default function InterviewerPage() {
   }, [interviewState, currentAudio, toast]);
 
   const getQuestionAudio = async (questionText: string) => {
-      try {
-          const result = await textToSpeech(questionText);
-          if (result && result.audio) {
-            setCurrentAudio(result.audio);
-            setInterviewState('listening');
-          } else {
-             throw new Error(result.error || "Audio generation failed without a specific error.");
-          }
-      } catch (error) {
-          console.error("TTS Error:", error);
-          toast({ 
+    try {
+        const result = await textToSpeech(questionText);
+        if (result && result.audio) {
+          setCurrentAudio(result.audio);
+          setInterviewState('listening');
+        } else {
+           // The flow returned an error, so we handle it gracefully
+           console.error("Audio generation failed:", result.error);
+           toast({ 
               variant: 'destructive', 
               title: 'Audio Generation Failed', 
-              description: 'Could not generate question audio. The service may be busy. Starting interview without audio.'
-          });
-          handleAudioEnded();
-      }
+              description: 'Could not generate question audio. Starting interview without it.'
+           });
+           handleAudioEnded(); // Proceed without audio
+        }
+    } catch (error) {
+        console.error("TTS Error:", error);
+        toast({ 
+            variant: 'destructive', 
+            title: 'Audio Generation Failed', 
+            description: 'Could not generate question audio. The service may be busy. Starting interview without audio.'
+        });
+        handleAudioEnded();
+    }
   }
 
   const handleStartInterview = async () => {
@@ -357,7 +364,6 @@ export default function InterviewerPage() {
 
     const isInterviewActive = !['idle', 'generating', 'finished', 'error'].includes(interviewState);
     const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
-    const isVideoVisible = interviewState !== 'reviewing';
     const currentQuestion = questions[currentQuestionIndex];
 
     return (
@@ -371,14 +377,14 @@ export default function InterviewerPage() {
                    ) : renderInterviewerContent()}
                 </Card>
                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
-                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", isVideoVisible ? 'opacity-100' : 'opacity-0')} autoPlay muted playsInline />
+                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", interviewState !== 'reviewing' ? 'opacity-100' : 'opacity-0')} autoPlay muted playsInline />
                     {interviewState === 'reviewing' && lastAnswerUrl && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
                     <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
                       {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
                     </div>
-                     {isInterviewActive && !isVideoVisible && (
+                     {isInterviewActive && interviewState === 'reviewing' && (
                          <div className="absolute inset-0 flex items-center justify-center z-20">
                             {renderInterviewerContent()}
                          </div>
