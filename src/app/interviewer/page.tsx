@@ -87,10 +87,10 @@ export default function InterviewerPage() {
                 videoRef.current.srcObject = stream;
             }
         } catch (error: any) {
-            console.error('Error accessing camera:', error);
             if (error.name === 'NotAllowedError') {
                 setHasCameraPermission(false);
             } else {
+                 console.error('Error accessing camera:', error);
                  setInterviewState('error');
             }
         }
