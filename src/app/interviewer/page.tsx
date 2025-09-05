@@ -424,7 +424,8 @@ export default function InterviewerPage() {
             <div className="w-full space-y-4">
                 <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
                     <motion.div
-                        animate={{ scale: [1, 1.02, 1], transition: { duration: 5, repeat: Infinity, ease: "easeInOut" } }}
+                        animate={{ scale: interviewState === 'playing-audio' ? [1, 1.02, 1] : 1 }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                         className="w-full h-full"
                     >
                          <Image
