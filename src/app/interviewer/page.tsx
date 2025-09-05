@@ -133,13 +133,16 @@ export default function InterviewerPage() {
         setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          // The onCanPlay event handler will set the camera to ready
+        } else {
+            // Fallback if videoRef is not available yet
+            setTimeout(() => {
+                if (videoRef.current) videoRef.current.srcObject = stream;
+            }, 100);
         }
-        setTimeout(() => {
-            console.log("1s fallback: Setting camera ready.");
-            setIsCameraReady(true);
-        }, 1000);
       } catch (error: any) {
-        if (error.name === 'NotAllowedError') {
+        console.error('Camera permission error:', error);
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
           setHasCameraPermission(false);
           toast({
             variant: 'destructive',
@@ -157,27 +160,12 @@ export default function InterviewerPage() {
       }
     }, [toast]);
     
-    // Combined initialization effect
+    // Effect to initialize camera on first load
     useEffect(() => {
-        let globalTimeout: NodeJS.Timeout;
+        getCameraPermission();
+    }, [getCameraPermission]);
 
-        if (hasCameraPermission === null) {
-            getCameraPermission();
-        }
-
-        // Fallback timer to force camera ready state
-        if (hasCameraPermission && !isCameraReady) {
-            globalTimeout = setTimeout(() => {
-                console.log("Global 5s fallback: Forcing camera ready state.");
-                setIsCameraReady(true);
-            }, 5000);
-        }
-
-        return () => {
-            clearTimeout(globalTimeout);
-        };
-    }, [hasCameraPermission, getCameraPermission, isCameraReady]);
-
+    // Effect to setup and teardown speech recognition
     useEffect(() => {
          if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -200,6 +188,7 @@ export default function InterviewerPage() {
             recognitionRef.current.onend = () => {
                 // Only restart if we are in the recording state and it wasn't stopped on purpose
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
+                    console.log('Speech recognition ended unexpectedly, restarting...');
                     recognitionRef.current?.start();
                 }
             };
@@ -208,13 +197,16 @@ export default function InterviewerPage() {
         return () => {
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
+                console.log('Camera stream stopped on component unmount.');
             }
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = true;
-                recognitionRef.current.abort(); // Use abort to immediately stop
+                recognitionRef.current.abort();
             }
         };
-    }, [interviewState]); // Rerun this effect when interviewState changes to manage speech recognition lifecycle
+    // This effect should only run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     
     const generateAndPlayQuestion = async (questionText: string) => {
         setInterviewState('generating-audio');
@@ -234,30 +226,28 @@ export default function InterviewerPage() {
     
     const handleStartInterview = async () => {
         if (!isCameraReady) {
-            toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize.' });
+            toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize or grant permission.' });
             return;
         }
         setInterviewState('generating');
         setFeedback(null);
         try {
             const result = await generateQuestions({ profession: selectedProfession });
-            if (!result || result.questions.length === 0) {
-                throw new Error("AI failed to generate questions.");
-            }
             setQuestions(result.questions);
             setAnswers([]);
             setCurrentQuestionIndex(0);
             setRetakesLeft(MAX_RETAKES);
-            
             await generateAndPlayQuestion(result.questions[0]);
         } catch (error) {
+            console.error("Error starting interview:", error);
             setInterviewState('error');
         }
     };
     
     const startRecording = () => {
-        if (!streamRef.current) {
+        if (!streamRef.current || !isCameraReady) {
             setInterviewState('error');
+            toast({ variant: 'destructive', title: 'Camera Error', description: 'Camera is not available to start recording.' });
             return;
         }
         setInterviewState('recording');
@@ -290,26 +280,30 @@ export default function InterviewerPage() {
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = false;
                 recognitionRef.current.start();
+                console.log("Speech recognition started.");
             }
         } catch (error) {
+            console.error("Error starting recording:", error);
             setInterviewState('error');
         }
     };
 
     const stopRecording = () => {
+        console.log("Stopping recording...");
         if (mediaRecorderRef.current?.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
         if (recognitionRef.current) {
             stopRecognitionOnPurpose.current = true;
-            recognitionRef.current.stop(); // Use stop for graceful shutdown
+            recognitionRef.current.stop();
+            console.log("Speech recognition stopped purposefully.");
         }
     };
 
     const handleRetake = () => {
         if (retakesLeft > 0) {
             setRetakesLeft(prev => prev - 1);
-            setAnswers(prev => prev.slice(0, -1));
+            setAnswers(prev => prev.slice(0, -1)); // Remove last answer
             generateAndPlayQuestion(questions[currentQuestionIndex]);
         }
     };
@@ -346,14 +340,14 @@ export default function InterviewerPage() {
     
     const handleCameraReady = () => {
         if (!isCameraReady) {
-            console.log("Camera ready event fired.");
+            console.log("Camera ready event fired. State is now ready.");
             setIsCameraReady(true);
         }
     };
 
     const handleAudioEnded = () => {
-        setCurrentAudio(null);
         setInterviewState('preparing');
+        resetPrepTimer();
         startPrepTimer();
     };
 
@@ -390,11 +384,11 @@ export default function InterviewerPage() {
                 <AlertDescription>
                     Please allow camera and microphone access. You may need to reload the page after granting permissions.
                 </AlertDescription>
-                <Button variant="secondary" size="sm" className="mt-4" onClick={() => getCameraPermission()}>Try Again</Button>
+                <Button variant="secondary" size="sm" className="mt-4" onClick={getCameraPermission}>Try Again</Button>
             </Alert>
         );
         
-        if (hasCameraPermission === null) return (
+        if (hasCameraPermission === null || (hasCameraPermission && !isCameraReady)) return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin" />
                 <span className="ml-2">Initializing Camera...</span>
@@ -450,7 +444,6 @@ export default function InterviewerPage() {
                     <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                         <video
                             ref={videoRef}
-                            onLoadedMetadata={handleCameraReady}
                             onCanPlay={handleCameraReady}
                             className={cn("w-full h-full object-cover transition-opacity", showPlayer ? 'opacity-0' : 'opacity-100')}
                             autoPlay
