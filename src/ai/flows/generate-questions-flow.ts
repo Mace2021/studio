@@ -12,7 +12,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const GenerateQuestionsInputSchema = z.object({
+const GenerateQuestionsInputSchema = z.object({
   profession: z.string().describe('The profession to generate interview questions for.'),
 });
 export type GenerateQuestionsInput = z.infer<typeof GenerateQuestionsInputSchema>;
