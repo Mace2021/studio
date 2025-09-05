@@ -14,6 +14,7 @@ import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/intervi
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const RESPONSE_TIME = 90; // seconds
@@ -401,14 +402,19 @@ export default function InterviewerPage() {
     return (
         <div className="w-full space-y-4">
            <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
-               <Image 
-                   src="https://picsum.photos/1280/720"
-                   data-ai-hint="professional person"
-                   fill
-                   sizes="(max-width: 768px) 100vw, 50vw"
-                   className="object-cover"
-                   alt="Interviewer"
-               />
+               <motion.div
+                    animate={{ scale: [1, 1.02, 1], transition: { duration: 5, repeat: Infinity, ease: "easeInOut" } }}
+                    className="w-full h-full"
+                >
+                    <Image 
+                        src="https://picsum.photos/1280/720"
+                        data-ai-hint="professional person"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover"
+                        alt="Interviewer"
+                    />
+               </motion.div>
                <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 text-white">
                    {renderInterviewerOverlay()}
                </div>
