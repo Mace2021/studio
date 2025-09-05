@@ -28,6 +28,16 @@ const professions = [
     "Data Scientist",
     "Marketing Manager",
     "Sales Representative",
+    "Registered Nurse",
+    "Physician Assistant",
+    "Physical Therapist",
+    "Accountant",
+    "Financial Analyst",
+    "Human Resources Manager",
+    "Teacher",
+    "Lawyer",
+    "Graphic Designer",
+    "Civil Engineer",
 ];
 
 interface Answer {
