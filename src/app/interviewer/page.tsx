@@ -195,6 +195,7 @@ export default function InterviewerPage() {
             };
             
             recognitionRef.current.onend = () => {
+                // Only restart if we are in the recording state and it wasn't stopped on purpose
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
                     recognitionRef.current?.start();
                 }
@@ -206,10 +207,11 @@ export default function InterviewerPage() {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
             if (recognitionRef.current) {
-                recognitionRef.current.stop();
+                stopRecognitionOnPurpose.current = true;
+                recognitionRef.current.abort(); // Use abort to immediately stop
             }
         };
-    }, [interviewState]);
+    }, [interviewState]); // Rerun this effect when interviewState changes to manage speech recognition lifecycle
     
     const generateAndPlayQuestion = async (questionText: string) => {
         setInterviewState('generating-audio');
@@ -297,7 +299,7 @@ export default function InterviewerPage() {
         }
         if (recognitionRef.current) {
             stopRecognitionOnPurpose.current = true;
-            recognitionRef.current.stop();
+            recognitionRef.current.stop(); // Use stop for graceful shutdown
         }
     };
 
@@ -540,3 +542,4 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
