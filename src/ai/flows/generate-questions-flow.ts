@@ -67,10 +67,16 @@ const generateQuestionsFlow = ai.defineFlow(
     outputSchema: GenerateQuestionsOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output || output.questions.length === 0) {
-      throw new Error('Failed to generate questions.');
+    try {
+      const { output } = await prompt(input);
+      if (!output || !Array.isArray(output.questions) || output.questions.length === 0) {
+        throw new Error('The AI model failed to return a valid list of questions.');
+      }
+      return output;
+    } catch (error: any) {
+        console.error("Error generating questions:", error);
+        // Re-throwing the error to be handled by the calling function on the client-side
+        throw new Error(`Failed to generate interview questions. Reason: ${error.message}`);
     }
-    return output;
   }
 );
