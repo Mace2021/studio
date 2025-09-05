@@ -14,6 +14,7 @@ import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/intervi
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 5; // seconds
@@ -38,6 +39,9 @@ const professions = [
     "Lawyer",
     "Graphic Designer",
     "Civil Engineer",
+    "Mechanical Engineer",
+    "Doctor",
+    "Chef",
 ];
 
 interface Answer {
@@ -53,7 +57,6 @@ export default function InterviewerPage() {
   const [questions, setQuestions] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [retakesLeft, setRetakesLeft] = useState(MAX_RETAKES);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentTranscript, setCurrentTranscript] = useState('');
@@ -74,25 +77,32 @@ export default function InterviewerPage() {
     onTimeOver: () => startRecording(),
   });
 
-  const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer } = useTimer({
+  const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer, status: responseTimerStatus } = useTimer({
     initialTime: RESPONSE_TIME,
     timerType: 'DECREMENTAL',
     endTime: 0,
-    onTimeOver: () => interviewState === 'recording' && stopRecording(),
+    onTimeOver: () => {
+      if (interviewState === 'recording') {
+        stopRecording();
+      }
+    },
   });
 
   useEffect(() => {
     const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
         setHasCameraPermission(true);
-        if (videoRef.current) videoRef.current.srcObject = stream;
       } catch (error) {
+        console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
-          description: 'Please enable camera and microphone permissions.',
+          description: 'Please enable camera and microphone permissions in your browser settings.',
         });
       }
     };
@@ -105,16 +115,15 @@ export default function InterviewerPage() {
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.onresult = (event) => {
-        let interimTranscript = '';
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
           }
         }
-        setCurrentTranscript(prev => prev + finalTranscript);
+        if (finalTranscript) {
+             setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
+        }
       };
       recognitionRef.current = recognition;
     }
@@ -128,10 +137,9 @@ export default function InterviewerPage() {
   }, [toast]);
   
   useEffect(() => {
-      if (interviewState === 'listening' && audioRef.current) {
+      if (interviewState === 'listening' && currentAudio && audioRef.current) {
           audioRef.current.play().catch(e => {
               console.error("Audio play failed:", e);
-              // Fallback if autoplay is blocked
               handleAudioEnded();
           });
       }
@@ -144,8 +152,12 @@ export default function InterviewerPage() {
           setInterviewState('listening');
       } catch (error) {
           console.error("TTS Error:", error);
-          toast({ variant: 'destructive', title: 'Audio Error', description: 'Could not generate question audio. Starting recording anyway.'});
-          startRecording(); // Fallback to just recording
+          toast({ 
+              variant: 'destructive', 
+              title: 'Audio Generation Failed', 
+              description: 'Could not generate question audio. The service may be busy. Starting interview without audio.'
+          });
+          handleAudioEnded();
       }
   }
 
@@ -172,19 +184,31 @@ export default function InterviewerPage() {
   }
 
   function startRecording() {
-    if (videoRef.current && videoRef.current.srcObject) {
+    if (videoRef.current?.srcObject) {
       setInterviewState('recording');
-      setRecordedChunks([]);
       setCurrentTranscript('');
       resetResponseTimer();
       startResponseTimer();
       
       const stream = videoRef.current.srcObject as MediaStream;
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
-      mediaRecorderRef.current.ondataavailable = (event) => event.data.size > 0 && setRecordedChunks(prev => [...prev, event.data]);
-      mediaRecorderRef.current.onstop = () => {
-        // This onstop is async, state might have changed
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (event) => {
+          if(event.data.size > 0) {
+              chunks.push(event.data)
+          }
       };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
+        setInterviewState('reviewing');
+        pauseResponseTimer();
+      };
+      
+      mediaRecorderRef.current = recorder;
       mediaRecorderRef.current.start();
       recognitionRef.current?.start();
     } else {
@@ -194,17 +218,19 @@ export default function InterviewerPage() {
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      recognitionRef.current?.stop();
-
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
-      setInterviewState('reviewing');
-      pauseResponseTimer();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+    }
+    if (recognitionRef.current) {
+        recognitionRef.current.stop();
     }
   };
+  
+  const handleStopClick = () => {
+    if(responseTimerStatus === 'RUNNING') {
+        stopRecording();
+    }
+  }
 
   const handleRetake = () => {
     if (retakesLeft > 0) {
@@ -230,7 +256,7 @@ export default function InterviewerPage() {
     try {
         const feedbackInput: InterviewFeedbackInput = {
             profession: selectedProfession,
-            questionsAndAnswers: answers.map(a => ({ question: a.question, answer: a.transcript }))
+            questionsAndAnswers: answers.map(a => ({ question: a.question, answer: a.transcript || "No answer transcribed." }))
         };
         const result = await getInterviewFeedback(feedbackInput);
         setFeedback(result.feedback);
@@ -270,7 +296,13 @@ export default function InterviewerPage() {
   }
 
   const renderContent = () => {
-    if (hasCameraPermission === false) return <Alert variant="destructive"><VideoOff className="h-4 w-4" /><AlertTitle>Camera Access Required</AlertTitle><AlertDescription>Please allow camera and microphone access.</AlertDescription></Alert>;
+    if (hasCameraPermission === false) return (
+        <Alert variant="destructive">
+            <VideoOff className="h-4 w-4" />
+            <AlertTitle>Camera Access Required</AlertTitle>
+            <AlertDescription>Please allow camera and microphone access to use this feature.</AlertDescription>
+        </Alert>
+    );
     if (hasCameraPermission === null) return <div className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /><span>Waiting for camera permission...</span></div>;
 
     switch (interviewState) {
@@ -298,7 +330,7 @@ export default function InterviewerPage() {
             const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
             return (
                  <div className="w-full">
-                    <video key={lastAnswerUrl} src={lastAnswerUrl || ''} className="aspect-video w-full rounded-md bg-black" controls autoPlay loop />
+                    {lastAnswerUrl && <video key={lastAnswerUrl} src={lastAnswerUrl} className="aspect-video w-full rounded-md bg-black" controls autoPlay loop />}
                     <div className="flex gap-4 justify-center mt-4">
                         <Button onClick={handleRetake} disabled={retakesLeft === 0}><RefreshCw className="mr-2 h-4 w-4" />Retake ({retakesLeft} left)</Button>
                         <Button onClick={handleNextQuestion} variant="default"><Check className="mr-2 h-4 w-4" />{currentQuestionIndex === questions.length - 1 ? 'Finish & Get Feedback' : 'Submit & Next'}</Button>
@@ -323,7 +355,7 @@ export default function InterviewerPage() {
                     <div className="absolute top-2 right-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
                         {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
                     </div>
-                    {interviewState === 'recording' && <Button onClick={stopRecording} variant="destructive" className="absolute bottom-4 left-1/2 -translate-x-1/2">Stop Recording</Button>}
+                    {interviewState === 'recording' && <Button onClick={handleStopClick} variant="destructive" className="absolute bottom-4 left-1/2 -translate-x-1/2">Stop Recording</Button>}
                 </div>
             );
         default: return <p>An unexpected error occurred.</p>;
@@ -335,7 +367,7 @@ export default function InterviewerPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} />}
+      {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
       <div className="w-full max-w-6xl space-y-6">
         <Card>
           <CardHeader>
@@ -350,9 +382,17 @@ export default function InterviewerPage() {
                  <div className="grid md:grid-cols-2 gap-6 items-center">
                     <Card className="bg-muted/50">
                         <CardContent className="p-6 flex items-center justify-center aspect-video">
+                           {interviewState === 'reviewing' ? (
+                                <div className="text-center space-y-4">
+                                    <h2 className="text-xl font-semibold">Answer Submitted!</h2>
+                                    <Check className="h-12 w-12 text-green-500 mx-auto" />
+                                    <p className="text-muted-foreground">Review your video and choose an option below.</p>
+                                </div>
+                           ) : (
                             <div className="relative w-48 h-48">
                                <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
                             </div>
+                           )}
                         </CardContent>
                     </Card>
                     <div className="aspect-video flex items-center justify-center">
@@ -413,3 +453,5 @@ export default function InterviewerPage() {
     </div>
   );
 }
+
+    
