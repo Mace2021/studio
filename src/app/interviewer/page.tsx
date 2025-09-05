@@ -94,12 +94,11 @@ export default function InterviewerPage() {
   const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        setHasCameraPermission(true);
       } catch (error: any) {
-        console.error('Error accessing camera:', error);
         if (error.name === 'NotAllowedError') {
           setHasCameraPermission(false);
         }
@@ -172,12 +171,6 @@ export default function InterviewerPage() {
           setCurrentAudio(result.audio);
           setInterviewState('listening');
         } else {
-           console.error("Audio generation failed:", result.error);
-           toast({ 
-              variant: 'default', 
-              title: 'Audio Unavailable', 
-              description: 'Could not generate question audio. Proceeding without it.'
-           });
            handleAudioEnded(); // Proceed without audio
         }
     } catch (error) {
@@ -419,7 +412,14 @@ export default function InterviewerPage() {
                </div>
 
                <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
-                    <video ref={videoRef} onCanPlay={() => setIsCameraReady(true)} className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
+                    <video 
+                      ref={videoRef} 
+                      onLoadedMetadata={() => setIsCameraReady(true)} 
+                      className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} 
+                      autoPlay 
+                      muted 
+                      playsInline 
+                    />
                     {(interviewState === 'reviewing' && lastAnswerUrl) && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
