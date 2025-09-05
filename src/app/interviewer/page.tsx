@@ -94,12 +94,12 @@ export default function InterviewerPage() {
   const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-        setHasCameraPermission(true);
       } catch (error: any) {
-        if (error.name === 'NotAllowedError') {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
           toast({
             variant: 'destructive',
             title: 'Camera Access Denied',
@@ -108,6 +108,7 @@ export default function InterviewerPage() {
           setHasCameraPermission(false);
         } else {
             console.error("Error accessing camera:", error);
+            setHasCameraPermission(false);
         }
       }
   };
@@ -117,33 +118,31 @@ export default function InterviewerPage() {
 
     // Initialize SpeechRecognition
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-        if (!recognitionRef.current) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-    
-            recognition.onresult = (event) => {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                    }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
                 }
-                if (finalTranscript) {
-                    setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
-                }
-            };
-            
-            recognition.onend = () => {
-              if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
-                console.log("Speech recognition ended unexpectedly, restarting...");
-                recognition.start();
-              }
             }
-            
-            recognitionRef.current = recognition;
+            if (finalTranscript) {
+                setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
+            }
+        };
+        
+        recognition.onend = () => {
+          if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
+            console.log("Speech recognition ended unexpectedly, restarting...");
+            recognition.start();
+          }
         }
+        
+        recognitionRef.current = recognition;
     }
 
     return () => {
@@ -514,3 +513,5 @@ export default function InterviewerPage() {
     </div>
   );
 }
+
+    
