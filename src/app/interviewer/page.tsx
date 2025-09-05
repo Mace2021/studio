@@ -115,34 +115,37 @@ export default function InterviewerPage() {
     getCameraPermission();
 
     // Check if SpeechRecognition is available and initialize it
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition && !recognitionRef.current) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          }
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!recognitionRef.current) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+    
+            recognition.onresult = (event) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+                }
+            }
+            if (finalTranscript) {
+                setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
+            }
+            };
+            
+            recognition.onend = () => {
+            // Only restart if the recording wasn't stopped intentionally
+            if (interviewState === 'recording' && !stopRecognitionOnPurpose.current) {
+                console.log("Speech recognition ended unexpectedly, restarting...");
+                recognition.start();
+            }
+            }
+            
+            recognitionRef.current = recognition;
         }
-        if (finalTranscript) {
-             setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
-        }
-      };
-      
-      recognition.onend = () => {
-        // Only restart if the recording wasn't stopped intentionally
-        if (interviewState === 'recording' && !stopRecognitionOnPurpose.current) {
-            console.log("Speech recognition ended unexpectedly, restarting...");
-            recognition.start();
-        }
-      }
-      
-      recognitionRef.current = recognition;
     }
+
 
     return () => {
       if (videoRef.current?.srcObject) {
@@ -375,7 +378,7 @@ export default function InterviewerPage() {
             </Button>
         </Alert>
     );
-    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
+    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
