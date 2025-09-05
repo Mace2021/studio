@@ -307,10 +307,10 @@ export default function InterviewerPage() {
       getCameraPermission();
   }
   
-  const renderInterviewerContent = () => {
+  const renderInterviewerOverlay = () => {
     switch(interviewState) {
         case 'listening':
-            return <div className="text-center"><h2 className="text-xl font-semibold mb-4">Listen to the question...</h2><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
+            return <div className="text-center"><h2 className="text-xl font-semibold mb-4">Listen to the question...</h2><Loader2 className="h-8 w-8 animate-spin mx-auto text-white" /></div>;
         case 'preparing':
             return <div className="text-center"><h2 className="text-xl font-semibold mb-4">Get Ready!</h2><p className="text-4xl font-bold">{prepTime}</p></div>;
         case 'recording':
@@ -320,14 +320,13 @@ export default function InterviewerPage() {
                 <div className="text-center space-y-4">
                     <h2 className="text-xl font-semibold">Answer Submitted!</h2>
                     <Check className="h-12 w-12 text-green-500 mx-auto" />
-                    <p className="text-muted-foreground">Review your video and choose an option below.</p>
                 </div>
             );
         case 'generating':
              return (
                  <div className="flex flex-col items-center justify-center text-center">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                    <p className="text-muted-foreground">{feedback === null ? 'Generating questions...' : 'Generating feedback...'}</p>
+                    <Loader2 className="h-12 w-12 text-white animate-spin mb-4" />
+                    <p className="text-white">{feedback === null ? 'Generating questions...' : 'Generating feedback...'}</p>
                  </div>
              );
         case 'finished':
@@ -335,11 +334,11 @@ export default function InterviewerPage() {
                 <div className="text-center space-y-4">
                     <h2 className="text-xl font-semibold">Interview Complete!</h2>
                     <Check className="h-12 w-12 text-green-500 mx-auto" />
-                    <p className="text-muted-foreground">Well done! Review your results below.</p>
+                    <p>Well done! Review your results below.</p>
                 </div>
             );
         default:
-            return <div className="flex flex-col items-center justify-center text-center h-full"><UserSquare className="h-24 w-24 text-muted-foreground mb-4" /><p className="text-muted-foreground">The interviewer will appear here.</p></div>
+            return <div className="flex flex-col items-center justify-center text-center h-full"><UserSquare className="h-24 w-24 text-white/50 mb-4" /><p className="text-white/80">The interviewer will appear here.</p></div>
     }
   }
 
@@ -386,25 +385,29 @@ export default function InterviewerPage() {
 
     return (
         <div className="w-full space-y-4">
-            <div className="grid md:grid-cols-2 gap-6">
-                 <Card className="bg-muted/50 aspect-video flex items-center justify-center p-4">
-                    <div className="text-center">
-                        <div className="relative w-32 h-32 mx-auto mb-4">
-                            <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" fill sizes="128px" className="rounded-full object-cover" alt="Interviewer" />
-                        </div>
-                        {renderInterviewerContent()}
-                    </div>
-                 </Card>
-                <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
+           <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
+               <Image 
+                   src="https://picsum.photos/1280/720"
+                   data-ai-hint="professional person"
+                   fill
+                   sizes="(max-width: 768px) 100vw, 50vw"
+                   className="object-cover"
+                   alt="Interviewer"
+               />
+               <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 text-white">
+                   {renderInterviewerOverlay()}
+               </div>
+
+               <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                     <video ref={videoRef} onCanPlay={() => setIsCameraReady(true)} className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
                     {(interviewState === 'reviewing' && lastAnswerUrl) && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
-                    <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
-                      {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
+                     <div className="absolute top-1 left-1 flex items-center gap-1 bg-black/50 text-white text-xs p-1 rounded-md">
+                      {hasCameraPermission ? <><Video className="h-3 w-3 text-green-500"/> ON</> : <><VideoOff className="h-3 w-3 text-red-500"/> OFF</> }
                     </div>
-                </div>
-            </div>
+               </div>
+           </div>
 
             {currentQuestion && (
               <Card><CardContent className="p-4 text-center"><p className="font-semibold">{currentQuestion}</p></CardContent></Card>
@@ -431,7 +434,7 @@ export default function InterviewerPage() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
-      <div className="w-full max-w-6xl space-y-6">
+      <div className="w-full max-w-4xl space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-headline">AI Interview Coach</CardTitle>
@@ -439,7 +442,7 @@ export default function InterviewerPage() {
               This is a mock interview to help you train and improve your skills for the real thing.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-center min-h-[50vh]">
+          <CardContent className="flex items-center justify-center min-h-[60vh]">
             {renderContent()}
           </CardContent>
         </Card>
