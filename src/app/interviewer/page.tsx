@@ -7,21 +7,19 @@ import { useTimer } from 'use-timer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Video, VideoOff, Mic, RefreshCw, Check, Send, Loader2, Play, ChevronsRight, Bot, Star, ChevronDown, UserSquare } from 'lucide-react';
+import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions-flow';
 import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/interview-feedback-flow';
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 5; // seconds
 const MAX_RETAKES = 2;
 
-type InterviewState = 'idle' | 'generating' | 'preparing' | 'listening' | 'recording' | 'reviewing' | 'finished' | 'error';
+type InterviewState = 'idle' | 'generating' | 'listening' | 'preparing' | 'recording' | 'reviewing' | 'finished' | 'error';
 
 const professions = [
     "Software Engineer",
@@ -63,7 +61,7 @@ export default function InterviewerPage() {
     initialTime: PREPARATION_TIME,
     timerType: 'DECREMENTAL',
     endTime: 0,
-    onTimeOver: startRecording,
+    onTimeOver: () => startRecording(),
   });
 
   const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer } = useTimer({
@@ -93,10 +91,10 @@ export default function InterviewerPage() {
     // Setup SpeechRecognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.onresult = (event) => {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onresult = (event) => {
         let interimTranscript = '';
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -108,18 +106,24 @@ export default function InterviewerPage() {
         }
         setCurrentTranscript(prev => prev + finalTranscript);
       };
+      recognitionRef.current = recognition;
     }
 
     return () => {
       if (videoRef.current?.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
       }
+      recognitionRef.current?.stop();
     };
   }, [toast]);
   
   useEffect(() => {
       if (interviewState === 'listening' && audioRef.current) {
-          audioRef.current.play();
+          audioRef.current.play().catch(e => {
+              console.error("Audio play failed:", e);
+              // Fallback if autoplay is blocked
+              handleAudioEnded();
+          });
       }
   }, [interviewState, currentAudio]);
 
@@ -139,10 +143,11 @@ export default function InterviewerPage() {
     setInterviewState('generating');
     setAnswers([]);
     setFeedback(null);
+    setCurrentQuestionIndex(0);
+    setRetakesLeft(MAX_RETAKES);
     try {
       const result = await generateQuestions({ profession: selectedProfession });
       setQuestions(result.questions);
-      setCurrentQuestionIndex(0);
       getQuestionAudio(result.questions[0]);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not generate interview questions.' });
@@ -152,11 +157,12 @@ export default function InterviewerPage() {
   
   const handleAudioEnded = () => {
       setInterviewState('preparing');
+      resetPrepTimer();
       startPrepTimer();
   }
 
   function startRecording() {
-    if (videoRef.current?.srcObject) {
+    if (videoRef.current && videoRef.current.srcObject) {
       setInterviewState('recording');
       setRecordedChunks([]);
       setCurrentTranscript('');
@@ -167,11 +173,7 @@ export default function InterviewerPage() {
       mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
       mediaRecorderRef.current.ondataavailable = (event) => event.data.size > 0 && setRecordedChunks(prev => [...prev, event.data]);
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
-        setInterviewState('reviewing');
-        pauseResponseTimer();
+        // This onstop is async, state might have changed
       };
       mediaRecorderRef.current.start();
       recognitionRef.current?.start();
@@ -185,6 +187,12 @@ export default function InterviewerPage() {
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
       recognitionRef.current?.stop();
+
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
+      setInterviewState('reviewing');
+      pauseResponseTimer();
     }
   };
 
@@ -347,7 +355,7 @@ export default function InterviewerPage() {
               <Card><CardContent className="p-4 text-center"><p className="font-semibold">{currentQuestion}</p></CardContent></Card>
             )}
 
-            <div className={cn("flex items-center justify-center", !isInterviewActive ? "h-32" : "h-auto")}>
+            <div className="flex items-center justify-center min-h-[300px]">
               {renderContent()}
             </div>
           </CardContent>
