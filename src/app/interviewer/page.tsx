@@ -29,6 +29,45 @@ type Answer = {
     transcript: string;
 };
 
+// Add types for SpeechRecognition API
+interface SpeechRecognitionEvent extends Event {
+    results: SpeechRecognitionResultList;
+    resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+    [index: number]: SpeechRecognitionResult;
+    length: number;
+}
+
+interface SpeechRecognitionResult {
+    isFinal: boolean;
+    [index: number]: SpeechRecognitionAlternative;
+    length: number;
+}
+
+interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    onresult: (event: SpeechRecognitionEvent) => void;
+    onend: () => void;
+    start: () => void;
+    stop: () => void;
+}
+
+declare global {
+    interface Window {
+        SpeechRecognition: new () => SpeechRecognition;
+        webkitSpeechRecognition: new () => SpeechRecognition;
+    }
+}
+
+
 const professions = [
     "Software Engineer",
     "Product Manager",
@@ -90,7 +129,6 @@ export default function InterviewerPage() {
             if (error.name === 'NotAllowedError') {
                 setHasCameraPermission(false);
             } else {
-                 console.error('Error accessing camera:', error);
                  setInterviewState('error');
             }
         }
@@ -100,12 +138,12 @@ export default function InterviewerPage() {
         getCameraPermission();
     
         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-            const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
             
-            recognition.onresult = (event) => {
+            recognition.onresult = (event: SpeechRecognitionEvent) => {
                 let finalTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
