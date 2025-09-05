@@ -17,7 +17,7 @@ const QuestionAndAnswerSchema = z.object({
     answer: z.string(),
 });
 
-export const InterviewFeedbackInputSchema = z.object({
+const InterviewFeedbackInputSchema = z.object({
   profession: z.string().describe('The profession the user is interviewing for.'),
   questionsAndAnswers: z.array(QuestionAndAnswerSchema).describe('A list of questions and the user\'s transcribed answers.'),
 });
