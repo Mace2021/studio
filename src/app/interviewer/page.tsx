@@ -114,8 +114,9 @@ export default function InterviewerPage() {
    useEffect(() => {
     getCameraPermission();
 
+    // Check if SpeechRecognition is available and initialize it
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (SpeechRecognition && !recognitionRef.current) {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -131,8 +132,9 @@ export default function InterviewerPage() {
              setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
         }
       };
-
+      
       recognition.onend = () => {
+        // Only restart if the recording wasn't stopped intentionally
         if (interviewState === 'recording' && !stopRecognitionOnPurpose.current) {
             console.log("Speech recognition ended unexpectedly, restarting...");
             recognition.start();
