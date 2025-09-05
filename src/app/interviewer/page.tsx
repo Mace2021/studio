@@ -100,18 +100,22 @@ export default function InterviewerPage() {
         setHasCameraPermission(true);
       } catch (error: any) {
         if (error.name === 'NotAllowedError') {
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this feature.',
+          });
           setHasCameraPermission(false);
         } else {
             console.error("Error accessing camera:", error);
         }
-        setIsCameraReady(false); // Explicitly set to false on any error
       }
   };
 
    useEffect(() => {
     getCameraPermission();
 
-    // Check if SpeechRecognition is available and initialize it
+    // Initialize SpeechRecognition
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
         if (!recognitionRef.current) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -120,20 +124,20 @@ export default function InterviewerPage() {
             recognition.interimResults = true;
     
             recognition.onresult = (event) => {
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                    }
                 }
-            }
-            if (finalTranscript) {
-                setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
-            }
+                if (finalTranscript) {
+                    setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
+                }
             };
             
             recognition.onend = () => {
-              if (!stopRecognitionOnPurpose.current) {
-                console.log("Speech recognition ended, restarting...");
+              if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
+                console.log("Speech recognition ended unexpectedly, restarting...");
                 recognition.start();
               }
             }
@@ -141,7 +145,6 @@ export default function InterviewerPage() {
             recognitionRef.current = recognition;
         }
     }
-
 
     return () => {
       if (videoRef.current?.srcObject) {
@@ -313,7 +316,6 @@ export default function InterviewerPage() {
       setCurrentQuestionIndex(0);
       setRetakesLeft(MAX_RETAKES);
       setCurrentAudio(null);
-      // Reset camera state to trigger permission check if needed
       setHasCameraPermission(null);
       setIsCameraReady(false);
       getCameraPermission();
@@ -368,7 +370,7 @@ export default function InterviewerPage() {
             </Button>
         </Alert>
     );
-    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
+    if (hasCameraPermission === null || !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing Camera...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
@@ -384,8 +386,8 @@ export default function InterviewerPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Button onClick={handleStartInterview} disabled={!isCameraReady}>
-                    {!isCameraReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                    {isCameraReady ? 'Start Interview' : 'Camera Loading...'}
+                    <Camera className="mr-2 h-4 w-4" />
+                    Start Interview
                 </Button>
             </div>
         </div>
@@ -417,7 +419,7 @@ export default function InterviewerPage() {
                <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                     <video 
                       ref={videoRef} 
-                      onLoadedMetadata={() => setIsCameraReady(true)} 
+                      onLoadedMetadata={() => setIsCameraReady(true)}
                       className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} 
                       autoPlay 
                       muted 
@@ -480,7 +482,7 @@ export default function InterviewerPage() {
                         <AccordionItem value="item-1">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-2"><Bot className="h-5 w-5"/> AI Feedback</div>
-                            </AccordionTrigger>
+                            </A_ccordionTrigger>
                             <AccordionContent className="prose dark:prose-invert max-w-none">
                                 {feedback ? <div dangerouslySetInnerHTML={{ __html: feedback.replace(/\n/g, '<br />') }} /> : 'No feedback available.'}
                             </AccordionContent>
