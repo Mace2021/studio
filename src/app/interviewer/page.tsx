@@ -131,6 +131,10 @@ export default function InterviewerPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        setTimeout(() => {
+            console.log("1s fallback: Setting camera ready.");
+            setIsCameraReady(true);
+        }, 1000);
       } catch (error: any) {
         if (error.name === 'NotAllowedError') {
           setHasCameraPermission(false);
@@ -152,7 +156,6 @@ export default function InterviewerPage() {
     
     // Combined initialization effect
     useEffect(() => {
-        let cameraReadyTimer: NodeJS.Timeout;
         let globalTimeout: NodeJS.Timeout;
 
         if (hasCameraPermission === null) {
@@ -167,7 +170,13 @@ export default function InterviewerPage() {
             }, 5000);
         }
 
-        if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        return () => {
+            clearTimeout(globalTimeout);
+        };
+    }, [hasCameraPermission, getCameraPermission, isCameraReady]);
+
+    useEffect(() => {
+         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
             recognitionRef.current.continuous = true;
@@ -199,10 +208,8 @@ export default function InterviewerPage() {
             if (recognitionRef.current) {
                 recognitionRef.current.stop();
             }
-            clearTimeout(cameraReadyTimer);
-            clearTimeout(globalTimeout);
         };
-    }, [hasCameraPermission, getCameraPermission, interviewState, isCameraReady]);
+    }, [interviewState]);
     
     useEffect(() => {
         if (currentAudio && audioRef.current) {
