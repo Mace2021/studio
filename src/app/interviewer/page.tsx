@@ -211,12 +211,6 @@ export default function InterviewerPage() {
         };
     }, [interviewState]);
     
-    useEffect(() => {
-        if (currentAudio && audioRef.current) {
-            audioRef.current.play().catch(e => console.error("Audio play failed", e));
-        }
-    }, [currentAudio]);
-
     const generateAndPlayQuestion = async (questionText: string) => {
         setInterviewState('generating-audio');
         try {
@@ -433,7 +427,7 @@ export default function InterviewerPage() {
                     <motion.div
                         animate={{ scale: interviewState === 'playing-audio' ? [1, 1.02, 1] : 1 }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                        className="w-full h-full"
+                        className="w-full h-full relative"
                     >
                          <Image
                             src="https://picsum.photos/1280/720"
@@ -491,7 +485,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            <audio ref={audioRef} src={currentAudio || ''} onEnded={handleAudioEnded} hidden />
+            {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} autoPlay hidden />}
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
