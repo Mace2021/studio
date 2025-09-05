@@ -158,7 +158,7 @@ export default function InterviewerPage() {
           setInterviewState('listening');
         } else {
            // The flow returned an error, so we handle it gracefully
-           console.error("Audio generation failed:", result.error);
+           console.warn("Audio generation failed:", result.error);
            toast({ 
               variant: 'destructive', 
               title: 'Audio Generation Failed', 
