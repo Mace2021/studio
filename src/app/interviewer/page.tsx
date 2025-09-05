@@ -23,11 +23,6 @@ const PREPARATION_TIME = 5; // seconds
 const MAX_RETAKES = 2;
 
 type InterviewState = 'idle' | 'generating' | 'preparing' | 'recording' | 'reviewing' | 'submitting' | 'feedback' | 'error';
-type Answer = {
-    question: string;
-    videoUrl: string | null;
-    transcript: string;
-};
 
 // Add types for SpeechRecognition API
 interface SpeechRecognitionEvent extends Event {
@@ -68,6 +63,12 @@ declare global {
 }
 
 
+interface Answer {
+    question: string;
+    videoUrl: string | null;
+    transcript: string;
+}
+
 const professions = [
     "Software Engineer",
     "Product Manager",
@@ -100,14 +101,14 @@ export default function InterviewerPage() {
     const stopRecognitionOnPurpose = useRef(false);
     const { toast } = useToast();
 
-    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer, status: prepTimerStatus } = useTimer({
+    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer } = useTimer({
         initialTime: PREPARATION_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
         onTimeOver: () => startRecording(),
     });
 
-    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer, status: responseTimerStatus } = useTimer({
+    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer } = useTimer({
         initialTime: RESPONSE_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
@@ -135,7 +136,9 @@ export default function InterviewerPage() {
     }, []);
 
     useEffect(() => {
-        getCameraPermission();
+        if (hasCameraPermission === null) {
+            getCameraPermission();
+        }
     
         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -159,7 +162,6 @@ export default function InterviewerPage() {
                 if (!stopRecognitionOnPurpose.current && (interviewState === 'recording' || interviewState === 'reviewing')) {
                     recognition.start();
                 }
-                
             };
             recognitionRef.current = recognition;
         }
@@ -174,7 +176,7 @@ export default function InterviewerPage() {
                 recognitionRef.current.stop();
             }
         };
-    }, [getCameraPermission, interviewState]);
+    }, [hasCameraPermission, getCameraPermission, interviewState]);
 
     const handleStartInterview = async () => {
         if (!isCameraReady) {
@@ -208,11 +210,9 @@ export default function InterviewerPage() {
             if (response.audio) {
                 setCurrentAudio(response.audio);
             } else {
-                // If TTS fails, proceed without audio
                 handleAudioEnded();
             }
         } catch (error) {
-            console.error("TTS error:", error);
             handleAudioEnded();
         }
     };
@@ -220,9 +220,6 @@ export default function InterviewerPage() {
     useEffect(() => {
         if (currentAudio && audioRef.current) {
             audioRef.current.play().catch(e => {
-                console.error("Audio play failed:", e)
-                // If autoplay is blocked, user might need to interact first.
-                // For now, we'll proceed as if audio ended.
                 handleAudioEnded();
             });
         }
@@ -301,9 +298,8 @@ export default function InterviewerPage() {
             setFeedback(result.feedback);
             setInterviewState('feedback');
         } catch (error) {
-            console.error("Feedback error:", error);
             toast({ variant: 'destructive', title: 'Feedback Error', description: 'Could not generate feedback for your interview.'});
-            setInterviewState('feedback'); // still show results, just without AI feedback
+            setInterviewState('feedback'); 
         }
     };
 
@@ -313,6 +309,8 @@ export default function InterviewerPage() {
         setAnswers([]);
         setCurrentQuestionIndex(0);
         setRetakesLeft(MAX_RETAKES);
+        setHasCameraPermission(null);
+        setIsCameraReady(false);
     };
 
     const renderInterviewerOverlay = () => {
