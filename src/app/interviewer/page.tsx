@@ -101,6 +101,8 @@ export default function InterviewerPage() {
       } catch (error: any) {
         if (error.name === 'NotAllowedError') {
           setHasCameraPermission(false);
+        } else {
+            console.error("Error accessing camera:", error);
         }
         setIsCameraReady(false); // Explicitly set to false on any error
       }
@@ -171,6 +173,7 @@ export default function InterviewerPage() {
           setCurrentAudio(result.audio);
           setInterviewState('listening');
         } else {
+           console.warn("Audio generation failed:", result?.error);
            handleAudioEnded(); // Proceed without audio
         }
     } catch (error) {
@@ -365,7 +368,7 @@ export default function InterviewerPage() {
             </Button>
         </Alert>
     );
-    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
+    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
