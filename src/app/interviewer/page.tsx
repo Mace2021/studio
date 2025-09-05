@@ -482,7 +482,7 @@ export default function InterviewerPage() {
                         <AccordionItem value="item-1">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-2"><Bot className="h-5 w-5"/> AI Feedback</div>
-                            </A_ccordionTrigger>
+                            </AccordionTrigger>
                             <AccordionContent className="prose dark:prose-invert max-w-none">
                                 {feedback ? <div dangerouslySetInnerHTML={{ __html: feedback.replace(/\n/g, '<br />') }} /> : 'No feedback available.'}
                             </AccordionContent>
