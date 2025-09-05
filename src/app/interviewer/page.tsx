@@ -89,31 +89,37 @@ export default function InterviewerPage() {
     },
   });
 
-   useEffect(() => {
-    const getCameraPermission = async () => {
-      if (hasCameraPermission === null) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          setHasCameraPermission(true);
-          
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-          // Add a small delay to ensure the stream is fully attached
-          setTimeout(() => setIsCameraReady(true), 500);
-
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          setIsCameraReady(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to use this app.',
-          });
+  const getCameraPermission = async () => {
+    if (hasCameraPermission === null) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setHasCameraPermission(true);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+          };
         }
+
+      } catch (error: any) {
+        if (error.name === 'NotAllowedError') {
+            // This is a user choice, not a technical error.
+        } else {
+            console.error('Error accessing camera:', error);
+        }
+        setHasCameraPermission(false);
+        setIsCameraReady(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
       }
-    };
+    }
+  };
+
+   useEffect(() => {
     getCameraPermission();
 
     // Setup SpeechRecognition
@@ -143,7 +149,8 @@ export default function InterviewerPage() {
       }
       recognitionRef.current?.stop();
     };
-  }, [hasCameraPermission, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasCameraPermission]);
   
   useEffect(() => {
       if (interviewState === 'listening' && currentAudio && audioRef.current) {
@@ -188,8 +195,7 @@ export default function InterviewerPage() {
     }
     if (hasCameraPermission !== true) {
       toast({ variant: 'destructive', title: 'Camera Required', description: 'Please enable camera access before starting.'});
-      // Attempt to re-request permission
-      setHasCameraPermission(null);
+      getCameraPermission();
       return;
     }
     setInterviewState('generating');
@@ -214,7 +220,7 @@ export default function InterviewerPage() {
   }
 
   function startRecording() {
-    if (!videoRef.current?.srcObject) {
+    if (!videoRef.current?.srcObject || !isCameraReady) {
       toast({ variant: 'destructive', title: 'Error', description: 'No camera stream available. Please refresh and grant permissions.' });
       setInterviewState('error');
       return;
@@ -350,7 +356,13 @@ export default function InterviewerPage() {
         <Alert variant="destructive">
             <VideoOff className="h-4 w-4" />
             <AlertTitle>Camera Access Required</AlertTitle>
-            <AlertDescription>Please allow camera and microphone access to use this feature. You may need to reload the page after granting permissions.</AlertDescription>
+            <AlertDescription>
+              Please allow camera and microphone access to use this feature. 
+              You may need to reload the page after granting permissions in your browser settings.
+            </AlertDescription>
+            <Button variant="secondary" size="sm" className="mt-4" onClick={() => setHasCameraPermission(null)}>
+                Try Again
+            </Button>
         </Alert>
     );
     if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
@@ -482,3 +494,5 @@ export default function InterviewerPage() {
     </div>
   );
 }
+
+    
