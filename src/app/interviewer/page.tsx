@@ -14,15 +14,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { generateQuestions, GenerateQuestionsInput } from '@/ai/flows/generate-questions-flow';
-import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/interview-feedback-flow';
-import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 
 const RESPONSE_TIME = 90; // seconds
-const PREPARATION_TIME = 5; // seconds
+const PREPARATION_TIME = 3; // seconds
 const MAX_RETAKES = 2;
 
-type InterviewState = 'idle' | 'generating' | 'preparing' | 'recording' | 'reviewing' | 'submitting' | 'feedback' | 'error';
+type InterviewState = 'idle' | 'generating' | 'preparing' | 'recording' | 'reviewing' | 'finished' | 'error';
 
 // Add types for SpeechRecognition API
 interface SpeechRecognitionEvent extends Event {
@@ -63,23 +60,68 @@ declare global {
 }
 
 
+const generalQuestions = [
+    "Tell me about yourself.",
+    "Why are you interested in this position?",
+    "What are your greatest strengths?",
+    "What are your greatest weaknesses?",
+    "Where do you see yourself in five years?",
+];
+
+const professionQuestions: Record<string, string[]> = {
+    "Software Engineer": [
+        "Describe a complex project you've worked on and your role in it.",
+        "How do you stay updated with new technologies?",
+        "Explain the difference between a process and a thread.",
+        "What's your experience with Agile methodologies?",
+        "How do you handle a bug in production?"
+    ],
+    "Product Manager": [
+        "How do you prioritize a product roadmap?",
+        "Describe a time you had to say no to a feature request from a stakeholder.",
+        "What is your favorite product and why?",
+        "How do you measure the success of a new feature?",
+        "Walk me through a product launch you managed."
+    ],
+    "UX/UI Designer": [
+        "Describe your design process from start to finish.",
+        "How do you incorporate user feedback into your designs?",
+        "Tell me about a time you had to defend your design choices.",
+        "What tools do you use for prototyping and collaboration?",
+        "How do you stay on top of design trends?"
+    ],
+    "Data Scientist": [
+        "Explain a machine learning model you've built to a non-technical audience.",
+        "How do you handle missing or incomplete data?",
+        "Describe a time you used data to influence a business decision.",
+        "What is the difference between supervised and unsupervised learning?",
+        "How do you validate the performance of your models?"
+    ],
+    "Marketing Manager": [
+        "What's your experience with content marketing strategies?",
+        "Describe a successful marketing campaign you led.",
+        "How do you measure ROI on a marketing budget?",
+        "Tell me about a time you failed in a marketing effort.",
+        "What digital marketing channels are you most familiar with?"
+    ],
+};
+
+const professions = Object.keys(professionQuestions);
+
 interface Answer {
     question: string;
     videoUrl: string | null;
     transcript: string;
 }
 
-const professions = [
-    "Software Engineer",
-    "Product Manager",
-    "UX/UI Designer",
-    "Data Scientist",
-    "Marketing Manager",
-    "Human Resources",
-    "Sales Representative",
-    "Financial Analyst",
-];
-
+const shuffleArray = (array: string[]) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
 
 export default function InterviewerPage() {
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -88,27 +130,25 @@ export default function InterviewerPage() {
     const [questions, setQuestions] = useState<string[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [retakesLeft, setRetakesLeft] = useState(MAX_RETAKES);
+    
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [currentTranscript, setCurrentTranscript] = useState('');
-    const [feedback, setFeedback] = useState('');
     const [selectedProfession, setSelectedProfession] = useState<string>(professions[0]);
-    const [currentAudio, setCurrentAudio] = useState<string | null>(null);
     
     const videoRef = useRef<HTMLVideoElement>(null);
-    const audioRef = useRef<HTMLAudioElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const stopRecognitionOnPurpose = useRef(false);
     const { toast } = useToast();
 
-    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer } = useTimer({
+    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer, status: prepTimerStatus } = useTimer({
         initialTime: PREPARATION_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
         onTimeOver: () => startRecording(),
     });
 
-    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer } = useTimer({
+    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer, status: responseTimerStatus } = useTimer({
         initialTime: RESPONSE_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
@@ -129,8 +169,6 @@ export default function InterviewerPage() {
         } catch (error: any) {
             if (error.name === 'NotAllowedError') {
                 setHasCameraPermission(false);
-            } else {
-                 setInterviewState('error');
             }
         }
     }, []);
@@ -187,46 +225,19 @@ export default function InterviewerPage() {
             toast({ variant: 'destructive', title: 'Camera Required', description: 'Please enable camera access.' });
             return;
         }
-
-        setInterviewState('generating');
+        setInterviewState('preparing');
+        
+        // Generate questions
+        const professionRelated = professionQuestions[selectedProfession] || [];
+        const combinedQuestions = [
+            ...shuffleArray(generalQuestions).slice(0, 5),
+            ...shuffleArray(professionRelated).slice(0, 5)
+        ];
+        setQuestions(combinedQuestions);
         setAnswers([]);
         setCurrentQuestionIndex(0);
         setRetakesLeft(MAX_RETAKES);
-        setFeedback('');
-
-        try {
-            const result = await generateQuestions({ profession: selectedProfession });
-            setQuestions(result.questions);
-            await playQuestion(result.questions[0]);
-        } catch(e) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not generate questions. Please try again.'});
-            setInterviewState('idle');
-        }
-    };
-
-    const playQuestion = async (questionText: string) => {
-        try {
-            const response = await textToSpeech(questionText);
-            if (response.audio) {
-                setCurrentAudio(response.audio);
-            } else {
-                handleAudioEnded();
-            }
-        } catch (error) {
-            handleAudioEnded();
-        }
-    };
-    
-    useEffect(() => {
-        if (currentAudio && audioRef.current) {
-            audioRef.current.play().catch(e => {
-                handleAudioEnded();
-            });
-        }
-    }, [currentAudio]);
-
-    const handleAudioEnded = () => {
-        setInterviewState('preparing');
+        
         resetPrepTimer();
         startPrepTimer();
     };
@@ -272,7 +283,9 @@ export default function InterviewerPage() {
         if (retakesLeft > 0) {
             setRetakesLeft(prev => prev - 1);
             setAnswers(prev => prev.slice(0, -1));
-            playQuestion(questions[currentQuestionIndex]);
+            setInterviewState('preparing');
+            resetPrepTimer();
+            startPrepTimer();
         }
     };
 
@@ -281,26 +294,16 @@ export default function InterviewerPage() {
             const nextIndex = currentQuestionIndex + 1;
             setCurrentQuestionIndex(nextIndex);
             setRetakesLeft(MAX_RETAKES);
-            await playQuestion(questions[nextIndex]);
+            setInterviewState('preparing');
+            resetPrepTimer();
+            startPrepTimer();
         } else {
             await finishInterview();
         }
     };
 
     const finishInterview = async () => {
-        setInterviewState('submitting');
-        try {
-            const input: InterviewFeedbackInput = {
-                profession: selectedProfession,
-                questionsAndAnswers: answers.map(a => ({ question: a.question, answer: a.transcript })),
-            };
-            const result = await getInterviewFeedback(input);
-            setFeedback(result.feedback);
-            setInterviewState('feedback');
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Feedback Error', description: 'Could not generate feedback for your interview.'});
-            setInterviewState('feedback'); 
-        }
+        setInterviewState('finished');
     };
 
     const restartInterview = () => {
@@ -311,6 +314,7 @@ export default function InterviewerPage() {
         setRetakesLeft(MAX_RETAKES);
         setHasCameraPermission(null);
         setIsCameraReady(false);
+        getCameraPermission();
     };
 
     const renderInterviewerOverlay = () => {
@@ -323,9 +327,7 @@ export default function InterviewerPage() {
                 return <div className="text-center"><h2 className="text-xl font-semibold">Answer Submitted!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /></div>;
             case 'generating':
                 return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Generating Questions...</p></div>;
-            case 'submitting':
-                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Generating Feedback...</p></div>;
-            case 'feedback':
+            case 'finished':
                 return <div className="text-center"><h2 className="text-xl font-semibold">Interview Complete!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /><p>Well done! Review your results below.</p></div>;
             default:
                 return <div className="flex flex-col items-center justify-center text-center h-full"><UserSquare className="h-24 w-24 text-white/50 mb-4" /><p className="text-white/80">The interviewer will appear here.</p></div>
@@ -421,7 +423,7 @@ export default function InterviewerPage() {
                     </div>
                 )}
                 
-                {interviewState === 'feedback' && (
+                {interviewState === 'finished' && (
                     <div className="text-center">
                         <Button onClick={restartInterview}><RefreshCw className="mr-2 h-4 w-4" />Start New Interview</Button>
                     </div>
@@ -432,7 +434,6 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-             {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
@@ -446,24 +447,14 @@ export default function InterviewerPage() {
                     </CardContent>
                 </Card>
 
-                {interviewState === 'feedback' && (
+                {interviewState === 'finished' && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Star className="text-primary h-6 w-6" /> Your Results</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
-                                {feedback && (
-                                    <AccordionItem value="item-1">
-                                        <AccordionTrigger>
-                                            <div className="flex items-center gap-2"><Bot className="h-5 w-5" /> AI Feedback</div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: feedback }} />
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                )}
-                                <AccordionItem value="item-2">
+                             <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+                                <AccordionItem value="item-1">
                                     <AccordionTrigger>
                                         <div className="flex items-center gap-2"><Play className="h-5 w-5" /> Review Your Answers</div>
                                     </AccordionTrigger>
