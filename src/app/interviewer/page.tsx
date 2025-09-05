@@ -133,7 +133,8 @@ export default function InterviewerPage() {
 
     return () => {
       if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
       }
       recognitionRef.current?.stop();
     };
@@ -151,7 +152,7 @@ export default function InterviewerPage() {
   const getQuestionAudio = async (questionText: string) => {
       try {
           const result = await textToSpeech(questionText);
-          if (result.audio) {
+          if (result && result.audio) {
             setCurrentAudio(result.audio);
             setInterviewState('listening');
           } else {
@@ -300,7 +301,24 @@ export default function InterviewerPage() {
         case 'reviewing':
              return (
                 <div className="text-center space-y-4">
-                    <h2 className="text-xl font-semibold">Review Your Answer</h2>
+                    <h2 className="text-xl font-semibold">Answer Submitted!</h2>
+                    <Check className="h-12 w-12 text-green-500 mx-auto" />
+                    <p className="text-muted-foreground">Review your video and choose an option below.</p>
+                </div>
+            );
+        case 'generating':
+             return (
+                 <div className="flex flex-col items-center justify-center text-center">
+                    <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+                    <p className="text-muted-foreground">{feedback === null ? 'Generating questions...' : 'Generating feedback...'}</p>
+                 </div>
+             );
+        case 'finished':
+             return (
+                <div className="text-center space-y-4">
+                    <h2 className="text-xl font-semibold">Interview Complete!</h2>
+                    <Check className="h-12 w-12 text-green-500 mx-auto" />
+                    <p className="text-muted-foreground">Well done! Review your results below.</p>
                 </div>
             );
         default:
@@ -316,68 +334,80 @@ export default function InterviewerPage() {
             <AlertDescription>Please allow camera and microphone access to use this feature.</AlertDescription>
         </Alert>
     );
-    if (hasCameraPermission === null) return <div className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /><span>Waiting for camera permission...</span></div>;
+    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
-    switch (interviewState) {
-        case 'idle':
-            return (
-                <div className="text-center">
-                    <h2 className="text-xl font-semibold mb-4">Practice your interview skills</h2>
-                    <p className="text-muted-foreground mb-6">Select a profession and answer AI-generated questions.</p>
-                    <div className="flex justify-center items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">{selectedProfession} <ChevronDown className="ml-2 h-4 w-4"/></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button onClick={handleStartInterview}>Start Interview</Button>
+    if (interviewState === 'idle') return (
+        <div className="text-center">
+            <h2 className="text-xl font-semibold mb-4">Practice your interview skills</h2>
+            <p className="text-muted-foreground mb-6">Select a profession and answer AI-generated questions.</p>
+            <div className="flex justify-center items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">{selectedProfession} <ChevronDown className="ml-2 h-4 w-4"/></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Button onClick={handleStartInterview}>Start Interview</Button>
+            </div>
+        </div>
+    );
+
+    const isInterviewActive = !['idle', 'generating', 'finished', 'error'].includes(interviewState);
+    const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
+    const isVideoVisible = interviewState !== 'reviewing';
+
+    return (
+        <div className="w-full space-y-4">
+            <div className="grid md:grid-cols-2 gap-6 items-center">
+                 <Card className="bg-muted/50 aspect-video flex items-center justify-center">
+                   {isInterviewActive ? (
+                        <div className="relative w-48 h-48">
+                            <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
+                        </div>
+                   ) : renderInterviewerContent()}
+                </Card>
+                <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
+                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", isVideoVisible ? 'opacity-100' : 'opacity-0')} autoPlay muted playsInline />
+                    {interviewState === 'reviewing' && lastAnswerUrl && (
+                        <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
+                    )}
+                    <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
+                      {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
                     </div>
+                     {isInterviewActive && !isVideoVisible && (
+                         <div className="absolute inset-0 flex items-center justify-center z-20">
+                            {renderInterviewerContent()}
+                         </div>
+                     )}
                 </div>
-            );
-        case 'generating':
-             return <div className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /><span>{feedback === null ? 'Generating questions...' : 'Generating feedback...'}</span></div>;
-        case 'reviewing':
-            const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
-            return (
-                 <div className="w-full">
-                    {lastAnswerUrl && <video key={lastAnswerUrl} src={lastAnswerUrl} className="aspect-video w-full rounded-md bg-black" controls autoPlay loop />}
-                    <div className="flex gap-4 justify-center mt-4">
-                        <Button onClick={handleRetake} disabled={retakesLeft === 0}><RefreshCw className="mr-2 h-4 w-4" />Retake ({retakesLeft} left)</Button>
-                        <Button onClick={handleNextQuestion} variant="default"><Check className="mr-2 h-4 w-4" />{currentQuestionIndex === questions.length - 1 ? 'Finish & Get Feedback' : 'Submit & Next'}</Button>
-                    </div>
+            </div>
+
+            {currentQuestion && (
+              <Card><CardContent className="p-4 text-center"><p className="font-semibold">{currentQuestion}</p></CardContent></Card>
+            )}
+
+             {interviewState === 'recording' && <Button onClick={handleStopClick} variant="destructive" className="w-full">Stop Recording</Button>}
+
+             {interviewState === 'reviewing' && (
+                 <div className="flex gap-4 justify-center mt-4">
+                    <Button onClick={handleRetake} disabled={retakesLeft === 0}><RefreshCw className="mr-2 h-4 w-4" />Retake ({retakesLeft} left)</Button>
+                    <Button onClick={handleNextQuestion} variant="default"><Check className="mr-2 h-4 w-4" />{currentQuestionIndex === questions.length - 1 ? 'Finish & Get Feedback' : 'Submit & Next'}</Button>
                 </div>
-            );
-        case 'finished':
-            return (
+             )}
+             
+             {interviewState === 'finished' && (
                 <div className="text-center">
-                    <Check className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold">Interview Complete!</h2>
-                    <p className="text-muted-foreground mb-6">Review your answers and AI feedback below.</p>
                     <Button onClick={restartInterview}><RefreshCw className="mr-2 h-4 w-4" />Start New Interview</Button>
                 </div>
-            );
-        case 'listening':
-        case 'preparing':
-        case 'recording':
-            return (
-                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                    <div className="absolute top-2 right-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
-                        {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
-                    </div>
-                    {interviewState === 'recording' && <Button onClick={handleStopClick} variant="destructive" className="absolute bottom-4 left-1/2 -translate-x-1/2">Stop Recording</Button>}
-                </div>
-            );
-        default: return <p>An unexpected error occurred.</p>;
-    }
+             )}
+        </div>
+    )
   };
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const isInterviewActive = !['idle', 'generating', 'finished', 'error'].includes(interviewState);
-
+  const isInterviewStarted = interviewState !== 'idle';
+  
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       {currentAudio && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
@@ -389,38 +419,8 @@ export default function InterviewerPage() {
               This is a mock interview to help you train and improve your skills for the real thing.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            
-            {isInterviewActive && (
-                 <div className="grid md:grid-cols-2 gap-6 items-center">
-                    <Card className="bg-muted/50">
-                        <CardContent className="p-6 flex items-center justify-center aspect-video">
-                           {interviewState === 'reviewing' ? (
-                                <div className="text-center space-y-4">
-                                    <h2 className="text-xl font-semibold">Answer Submitted!</h2>
-                                    <Check className="h-12 w-12 text-green-500 mx-auto" />
-                                    <p className="text-muted-foreground">Review your video and choose an option below.</p>
-                                </div>
-                           ) : (
-                            <div className="relative w-48 h-48">
-                               <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
-                            </div>
-                           )}
-                        </CardContent>
-                    </Card>
-                    <div className="aspect-video flex items-center justify-center">
-                       {renderInterviewerContent()}
-                    </div>
-                </div>
-            )}
-            
-            {currentQuestion && (
-              <Card><CardContent className="p-4 text-center"><p className="font-semibold">{currentQuestion}</p></CardContent></Card>
-            )}
-
-            <div className="flex items-center justify-center min-h-[300px]">
-              {renderContent()}
-            </div>
+          <CardContent className="flex items-center justify-center min-h-[50vh]">
+            {renderContent()}
           </CardContent>
         </Card>
 
@@ -466,3 +466,5 @@ export default function InterviewerPage() {
     </div>
   );
 }
+
+    
