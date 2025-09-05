@@ -144,10 +144,11 @@ export default function InterviewerPage() {
       if (interviewState === 'listening' && currentAudio && audioRef.current) {
           audioRef.current.play().catch(e => {
               console.error("Audio play failed:", e);
+              toast({ variant: 'destructive', title: 'Audio Playback Error', description: 'Could not play question audio. Please ensure your browser allows autoplay.' });
               handleAudioEnded();
           });
       }
-  }, [interviewState, currentAudio]);
+  }, [interviewState, currentAudio, toast]);
 
   const getQuestionAudio = async (questionText: string) => {
       try {
@@ -357,6 +358,7 @@ export default function InterviewerPage() {
     const isInterviewActive = !['idle', 'generating', 'finished', 'error'].includes(interviewState);
     const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
     const isVideoVisible = interviewState !== 'reviewing';
+    const currentQuestion = questions[currentQuestionIndex];
 
     return (
         <div className="w-full space-y-4">
@@ -466,5 +468,3 @@ export default function InterviewerPage() {
     </div>
   );
 }
-
-    
