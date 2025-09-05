@@ -88,15 +88,15 @@ export default function InterviewerPage() {
     },
   });
 
-  useEffect(() => {
+   useEffect(() => {
     const getCameraPermission = async () => {
       if (hasCameraPermission === null) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
+          setHasCameraPermission(true);
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
@@ -108,7 +108,6 @@ export default function InterviewerPage() {
         }
       }
     };
-  
     getCameraPermission();
 
     // Setup SpeechRecognition
@@ -160,8 +159,8 @@ export default function InterviewerPage() {
            // The flow returned an error, so we handle it gracefully
            console.warn("Audio generation failed:", result.error);
            toast({ 
-              variant: 'destructive', 
-              title: 'Audio Generation Failed', 
+              variant: 'default', 
+              title: 'Audio Generation Unavailable', 
               description: 'Could not generate question audio. Starting interview without it.'
            });
            handleAudioEnded(); // Proceed without audio
