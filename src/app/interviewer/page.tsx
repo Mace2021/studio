@@ -12,6 +12,7 @@ import { generateQuestions, GenerateQuestionsInput } from '@/ai/flows/generate-q
 import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/interview-feedback-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 5; // seconds
