@@ -1,5 +1,4 @@
-
-'use client';
+ 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
@@ -139,6 +138,7 @@ export default function InterviewerPage() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const stopRecognitionOnPurpose = useRef(false);
+    const streamRef = useRef<MediaStream | null>(null);
     const { toast } = useToast();
 
     const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer, status: prepTimerStatus } = useTimer({
@@ -161,23 +161,104 @@ export default function InterviewerPage() {
 
     const getCameraPermission = useCallback(async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            console.log('Requesting camera permission...');
+            
+            // Stop any existing stream first
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }, 
+                audio: true 
+            });
+            
+            console.log('Camera permission granted, got stream:', stream);
+            streamRef.current = stream;
             setHasCameraPermission(true);
+            
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
+                
+                // Add event listeners for video element
+                const handleLoadedMetadata = () => {
+                    console.log('Video metadata loaded');
+                    setIsCameraReady(true);
+                };
+                
+                const handleCanPlay = () => {
+                    console.log('Video can play');
+                    if (videoRef.current) {
+                        videoRef.current.play().catch(err => {
+                            console.error('Error playing video:', err);
+                        });
+                    }
+                };
+
+                const handleError = (error: Event) => {
+                    console.error('Video error:', error);
+                    setIsCameraReady(false);
+                };
+
+                videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+                videoRef.current.addEventListener('canplay', handleCanPlay);
+                videoRef.current.addEventListener('error', handleError);
+
+                // Load the video
+                videoRef.current.load();
+
+                // Cleanup function for event listeners
+                return () => {
+                    if (videoRef.current) {
+                        videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                        videoRef.current.removeEventListener('canplay', handleCanPlay);
+                        videoRef.current.removeEventListener('error', handleError);
+                    }
+                };
             }
         } catch (error: any) {
+            console.error('Camera permission error:', error);
             if (error.name === 'NotAllowedError') {
                 setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera Access Denied',
+                    description: 'Please allow camera and microphone access in your browser settings.'
+                });
+            } else if (error.name === 'NotFoundError') {
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'No Camera Found',
+                    description: 'Please make sure your camera is connected and try again.'
+                });
+            } else {
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera Error',
+                    description: `Failed to access camera: ${error.message}`
+                });
             }
         }
-    }, []);
+    }, [toast]);
 
+    // Initialize camera and speech recognition
     useEffect(() => {
-        if (hasCameraPermission === null) {
-            getCameraPermission();
-        }
-    
+        let cleanup: (() => void) | undefined;
+
+        const initializeCamera = async () => {
+            if (hasCameraPermission === null) {
+                cleanup = await getCameraPermission();
+            }
+        };
+
+        initializeCamera();
+
+        // Initialize speech recognition
         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
@@ -198,20 +279,35 @@ export default function InterviewerPage() {
             
             recognition.onend = () => {
                 if (!stopRecognitionOnPurpose.current && (interviewState === 'recording' || interviewState === 'reviewing')) {
-                    recognition.start();
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Speech recognition restart error:', error);
+                    }
                 }
             };
             recognitionRef.current = recognition;
         }
-    
+
         return () => {
-            if (videoRef.current?.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach(track => track.stop());
+            // Cleanup camera
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
+            
+            // Cleanup speech recognition
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = true;
-                recognitionRef.current.stop();
+                try {
+                    recognitionRef.current.stop();
+                } catch (error) {
+                    console.error('Error stopping speech recognition:', error);
+                }
+            }
+
+            // Call cleanup function from getCameraPermission if it exists
+            if (cleanup) {
+                cleanup();
             }
         };
     }, [hasCameraPermission, getCameraPermission, interviewState]);
@@ -243,39 +339,71 @@ export default function InterviewerPage() {
     };
     
     const startRecording = () => {
-        if (!videoRef.current?.srcObject) return setInterviewState('error');
+        if (!streamRef.current) {
+            console.error('No stream available for recording');
+            return setInterviewState('error');
+        }
 
         setInterviewState('recording');
         setCurrentTranscript('');
         resetResponseTimer();
         startResponseTimer();
         
-        const stream = videoRef.current.srcObject as MediaStream;
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const chunks: Blob[] = [];
+        try {
+            const recorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+            const chunks: Blob[] = [];
 
-        recorder.ondataavailable = (event) => { if(event.data.size > 0) chunks.push(event.data) };
-        recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript.trim() }]);
-            setInterviewState('reviewing');
-            pauseResponseTimer();
-        };
-        
-        mediaRecorderRef.current = recorder;
-        mediaRecorderRef.current.start();
-        if (recognitionRef.current) {
-            stopRecognitionOnPurpose.current = false;
-            recognitionRef.current.start();
+            recorder.ondataavailable = (event) => { 
+                if(event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+            
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                setAnswers(prev => [...prev, { 
+                    question: questions[currentQuestionIndex], 
+                    videoUrl: url, 
+                    transcript: currentTranscript.trim() 
+                }]);
+                setInterviewState('reviewing');
+                pauseResponseTimer();
+            };
+            
+            mediaRecorderRef.current = recorder;
+            mediaRecorderRef.current.start();
+            
+            if (recognitionRef.current) {
+                stopRecognitionOnPurpose.current = false;
+                try {
+                    recognitionRef.current.start();
+                } catch (error) {
+                    console.error('Error starting speech recognition:', error);
+                }
+            }
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Recording Error',
+                description: 'Failed to start recording. Please try again.'
+            });
+            setInterviewState('error');
         }
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+        if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
         if (recognitionRef.current) {
             stopRecognitionOnPurpose.current = true;
-            recognitionRef.current.stop();
+            try {
+                recognitionRef.current.stop();
+            } catch (error) {
+                console.error('Error stopping speech recognition:', error);
+            }
         }
     };
 
@@ -345,7 +473,13 @@ export default function InterviewerPage() {
                 <Button variant="secondary" size="sm" className="mt-4" onClick={getCameraPermission}>Try Again</Button>
             </Alert>
         );
-        if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing Camera...</span></div>;
+        
+        if (hasCameraPermission === null) return (
+            <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Initializing Camera...</span>
+            </div>
+        );
 
         if (interviewState === 'idle') return (
             <div className="text-center">
@@ -395,7 +529,6 @@ export default function InterviewerPage() {
                     <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                         <video
                             ref={videoRef}
-                            onLoadedMetadata={() => setIsCameraReady(true)}
                             className={cn("w-full h-full object-cover transition-opacity", showPlayer ? 'opacity-0' : 'opacity-100')}
                             autoPlay
                             muted
