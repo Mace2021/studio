@@ -68,6 +68,9 @@ const professions = [
     "UX/UI Designer",
     "Data Scientist",
     "Marketing Manager",
+    "Registered Nurse",
+    "Accountant",
+    "Teacher",
 ];
 
 interface Answer {
@@ -542,4 +545,3 @@ export default function InterviewerPage() {
         </div>
     );
 }
-

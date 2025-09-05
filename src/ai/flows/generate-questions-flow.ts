@@ -75,7 +75,6 @@ const generateQuestionsFlow = ai.defineFlow(
       return output;
     } catch (error: any) {
         console.error("Error generating questions:", error);
-        // Re-throwing the error to be handled by the calling function on the client-side
         throw new Error(`Failed to generate interview questions. Reason: ${error.message}`);
     }
   }
