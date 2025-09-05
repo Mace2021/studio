@@ -331,7 +331,7 @@ export default function InterviewerPage() {
           <CardHeader>
             <CardTitle className="text-2xl font-headline">AI Interview Coach</CardTitle>
             <CardDescription>
-              {isInterviewActive ? `Question ${currentQuestionIndex + 1} of ${questions.length}` : 'Follow the instructions to practice your interview.'}
+              This is a mock interview to help you train and improve your skills for the real thing.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
