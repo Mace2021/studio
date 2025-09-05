@@ -14,7 +14,6 @@ import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/intervi
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { cn } from '@/lib/utils';
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 5; // seconds
@@ -92,20 +91,22 @@ export default function InterviewerPage() {
     const getCameraPermission = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-        }
         setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
       } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
         toast({
           variant: 'destructive',
           title: 'Camera Access Denied',
-          description: 'Please enable camera and microphone permissions in your browser settings.',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
         });
       }
     };
+
     getCameraPermission();
 
     // Setup SpeechRecognition
@@ -184,37 +185,37 @@ export default function InterviewerPage() {
   }
 
   function startRecording() {
-    if (videoRef.current?.srcObject) {
-      setInterviewState('recording');
-      setCurrentTranscript('');
-      resetResponseTimer();
-      startResponseTimer();
-      
-      const stream = videoRef.current.srcObject as MediaStream;
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-          if(event.data.size > 0) {
-              chunks.push(event.data)
-          }
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
-        setInterviewState('reviewing');
-        pauseResponseTimer();
-      };
-      
-      mediaRecorderRef.current = recorder;
-      mediaRecorderRef.current.start();
-      recognitionRef.current?.start();
-    } else {
+    if (!videoRef.current?.srcObject) {
       toast({ variant: 'destructive', title: 'Error', description: 'No camera stream available.' });
       setInterviewState('error');
+      return;
     }
+    setInterviewState('recording');
+    setCurrentTranscript('');
+    resetResponseTimer();
+    startResponseTimer();
+    
+    const stream = videoRef.current.srcObject as MediaStream;
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    const chunks: Blob[] = [];
+
+    recorder.ondataavailable = (event) => {
+        if(event.data.size > 0) {
+            chunks.push(event.data)
+        }
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      setAnswers(prev => [...prev, { question: questions[currentQuestionIndex], videoUrl: url, transcript: currentTranscript, blob }]);
+      setInterviewState('reviewing');
+      pauseResponseTimer();
+    };
+    
+    mediaRecorderRef.current = recorder;
+    mediaRecorderRef.current.start();
+    recognitionRef.current?.start();
   }
 
   const stopRecording = () => {
