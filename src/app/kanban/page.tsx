@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import * as xlsx from 'xlsx';
-import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { KanbanColumn } from '@/components/kanban/kanban-column';
 import type { Task as KanbanTask, Column as KanbanColumnData } from '@/lib/types';
 import { addDays, parseISO } from 'date-fns';
@@ -79,36 +78,29 @@ export default function KanbanPage() {
         }
     }, [tasks, columns, isLoaded]);
 
-    const onDragEnd = (result: DropResult) => {
-        const { destination, source, draggableId } = result;
-
-        if (!destination) {
-            return;
-        }
-
-        if (destination.droppableId === source.droppableId && destination.index === source.index) {
-            return;
-        }
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+        e.preventDefault();
+        const sourceColumnId = e.dataTransfer.getData("sourceColumnId");
+        const taskId = e.dataTransfer.getData("taskId");
         
-        const startColumnTasks = Array.from(tasks[source.droppableId]);
-        const [movedTask] = startColumnTasks.splice(source.index, 1);
-        
-        if (source.droppableId === destination.droppableId) {
-            // Moving within the same column
-            startColumnTasks.splice(destination.index, 0, movedTask);
-            setTasks({
-                ...tasks,
-                [source.droppableId]: startColumnTasks
-            });
+        if (!sourceColumnId || !taskId) return;
+
+        const sourceTasks = [...(tasks[sourceColumnId] || [])];
+        const taskIndex = sourceTasks.findIndex(t => t.id === taskId);
+        if(taskIndex === -1) return;
+
+        const [movedTask] = sourceTasks.splice(taskIndex, 1);
+
+        if (sourceColumnId === targetColumnId) {
+            setTasks(prev => ({ ...prev, [sourceColumnId]: sourceTasks }));
         } else {
-            // Moving to a different column
-            const finishColumnTasks = Array.from(tasks[destination.droppableId] || []);
-            finishColumnTasks.splice(destination.index, 0, movedTask);
-            setTasks({
-                ...tasks,
-                [source.droppableId]: startColumnTasks,
-                [destination.droppableId]: finishColumnTasks
-            });
+             const targetTasks = [...(tasks[targetColumnId] || [])];
+             targetTasks.push(movedTask);
+             setTasks(prev => ({
+                ...prev,
+                [sourceColumnId]: sourceTasks,
+                [targetColumnId]: targetTasks,
+             }));
         }
     };
     
@@ -156,32 +148,31 @@ export default function KanbanPage() {
     };
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col h-full p-4 sm:p-6 md:p-8">
-            <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Kanban Board</h1>
-                    <p className="text-muted-foreground">Visualize your workflow and track task progress.</p>
-                </div>
-                 <Button onClick={handleExport} variant="outline">
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Export to Excel
-                </Button>
+    <div className="flex flex-col h-full p-4 sm:p-6 md:p-8">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Kanban Board</h1>
+                <p className="text-muted-foreground">Visualize your workflow and track task progress.</p>
             </div>
-            <div className="flex flex-col md:flex-row flex-1 gap-6 overflow-x-auto md:pb-4">
-                {columns.map(column => (
-                    <KanbanColumn 
-                        key={column.id} 
-                        column={column} 
-                        tasks={tasks[column.id] || []}
-                        onAddTask={handleAddTask}
-                        onEditTask={handleEditTask}
-                        onDeleteTask={handleDeleteTask}
-                    />
-                ))}
-            </div>
+             <Button onClick={handleExport} variant="outline">
+                <FileDown className="mr-2 h-4 w-4" />
+                Export to Excel
+            </Button>
         </div>
-    </DragDropContext>
+        <div className="flex flex-col md:flex-row flex-1 gap-6 overflow-x-auto md:pb-4">
+            {columns.map(column => (
+                <KanbanColumn 
+                    key={column.id} 
+                    column={column} 
+                    tasks={tasks[column.id] || []}
+                    onAddTask={handleAddTask}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteTask}
+                    onDrop={handleDrop}
+                />
+            ))}
+        </div>
+    </div>
   );
 }
 

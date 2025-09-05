@@ -1,0 +1,55 @@
+diff --git a/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js b/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
+index 588a4e3..5d321e0 100644
+--- a/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
++++ b/node_modules/react-beautiful-dnd/dist/react-beautiful-dnd.esm.js
+@@ -6289,6 +6289,20 @@
+   value: true
+ });
+ 
++var semver = {
++  version: "17.0.2"
++};
++
++var StrictMode = /*#__PURE__*/react.memo(function (props) {
++  return props.children;
++});
++
++var useLayoutEffect = typeof window !== 'undefined' ? react.useLayoutEffect : react.useEffect;
++
++var _createRoot = /*#__PURE__*/Object.freeze({
++  __proto__: null
++});
++
+ var Manager = function () {
+   function Manager() {
+     var _this = this;
+@@ -8885,7 +8899,7 @@
+     var App = function App(props) {
+       return /*#__PURE__*/react.createElement(ManagerContext.Provider, {
+         value: manager
+-      }, /*#__PURE__*/react.createElement(props.children, {
++      }, /*#__PURE__*/react.createElement(StrictMode, null, /*#__PURE__*/react.createElement(props.children, {
+         ref: provided.innerRef,
+         "data-rbd-droppable-context-id": provided.contextId,
+         "data-rbd-droppable-id": provided.droppableId
+@@ -8893,7 +8907,7 @@
+     };
+ 
+     var newPortal = portalCreator.create(this.props.droppableId);
+-    reactDom.render( /*#__PURE__*/react.createElement(App, null, Droppable), newPortal);
++    reactDom.render( /*#__PURE__*/react.createElement(App, null, Droppable), newPortal.container);
+     this.portal = newPortal;
+   };
+ 
+diff --git a/node_modules/react-beautiful-dnd/package.json b/node_modules/react-beautiful-dnd/package.json
+index f791e84..fa88d07 100644
+--- a/node_modules/react-beautiful-dnd/package.json
++++ b/node_modules/react-beautiful-dnd/package.json
+@@ -68,6 +68,7 @@
+     "react": "16.8.5 - 18",
+     "react-dom": "16.8.5 - 18"
+   },
++  "resolutions": {},
+   "pre-commit": "precommit",
+   "sideEffects": false,
+   "typings": "index.d.ts",

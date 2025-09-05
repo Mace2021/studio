@@ -14,14 +14,13 @@ import { Calendar } from '../ui/calendar';
 import { Label } from '../ui/label';
 import { format } from 'date-fns';
 
-interface KanbanCardProps {
+interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   task: Task;
-  isDragging: boolean;
   onEdit: (newContent: string, newDescription?: string, newStart?: Date, newEnd?: Date) => void;
   onDelete: () => void;
 }
 
-export const KanbanCard = ({ task, isDragging, onEdit, onDelete }: KanbanCardProps) => {
+export const KanbanCard = ({ task, onEdit, onDelete, className, ...props }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(task.content);
   const [description, setDescription] = useState(task.description || '');
@@ -34,7 +33,10 @@ export const KanbanCard = ({ task, isDragging, onEdit, onDelete }: KanbanCardPro
   }
 
   return (
-    <Card className={cn("bg-card shadow-sm hover:shadow-md transition-shadow group", isDragging && "shadow-lg scale-105")}>
+    <Card 
+        className={cn("bg-card shadow-sm hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing", className)}
+        {...props}
+    >
       <CardHeader className="p-3 pb-0">
         {isEditing ? (
             <Input 
