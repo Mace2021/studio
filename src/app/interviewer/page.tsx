@@ -7,19 +7,23 @@ import { useTimer } from 'use-timer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare, Camera } from 'lucide-react';
+import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare, Camera, Volume2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { generateQuestions } from '@/ai/flows/generate-questions-flow';
+import { getInterviewFeedback } from '@/ai/flows/interview-feedback-flow';
+import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
+
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 3; // seconds
 const MAX_RETAKES = 2;
 
-type InterviewState = 'idle' | 'generating' | 'preparing' | 'recording' | 'reviewing' | 'finished' | 'error';
+type InterviewState = 'idle' | 'generating' | 'generating-audio' | 'playing-audio' | 'preparing' | 'recording' | 'reviewing' | 'analyzing' | 'finished' | 'error';
 
 // Add types for SpeechRecognition API
 interface SpeechRecognitionEvent extends Event {
@@ -59,69 +63,19 @@ declare global {
     }
 }
 
-
-const generalQuestions = [
-    "Tell me about yourself.",
-    "Why are you interested in this position?",
-    "What are your greatest strengths?",
-    "What are your greatest weaknesses?",
-    "Where do you see yourself in five years?",
+const professions = [
+    "Software Engineer",
+    "Product Manager",
+    "UX/UI Designer",
+    "Data Scientist",
+    "Marketing Manager",
 ];
-
-const professionQuestions: Record<string, string[]> = {
-    "Software Engineer": [
-        "Describe a complex project you've worked on and your role in it.",
-        "How do you stay updated with new technologies?",
-        "Explain the difference between a process and a thread.",
-        "What's your experience with Agile methodologies?",
-        "How do you handle a bug in production?"
-    ],
-    "Product Manager": [
-        "How do you prioritize a product roadmap?",
-        "Describe a time you had to say no to a feature request from a stakeholder.",
-        "What is your favorite product and why?",
-        "How do you measure the success of a new feature?",
-        "Walk me through a product launch you managed."
-    ],
-    "UX/UI Designer": [
-        "Describe your design process from start to finish.",
-        "How do you incorporate user feedback into your designs?",
-        "Tell me about a time you had to defend your design choices.",
-        "What tools do you use for prototyping and collaboration?",
-        "How do you stay on top of design trends?"
-    ],
-    "Data Scientist": [
-        "Explain a machine learning model you've built to a non-technical audience.",
-        "How do you handle missing or incomplete data?",
-        "Describe a time you used data to influence a business decision.",
-        "What is the difference between supervised and unsupervised learning?",
-        "How do you validate the performance of your models?"
-    ],
-    "Marketing Manager": [
-        "What's your experience with content marketing strategies?",
-        "Describe a successful marketing campaign you led.",
-        "How do you measure ROI on a marketing budget?",
-        "Tell me about a time you failed in a marketing effort.",
-        "What digital marketing channels are you most familiar with?"
-    ],
-};
-
-const professions = Object.keys(professionQuestions);
 
 interface Answer {
     question: string;
     videoUrl: string | null;
     transcript: string;
 }
-
-const shuffleArray = (array: string[]) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-};
 
 export default function InterviewerPage() {
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -130,11 +84,13 @@ export default function InterviewerPage() {
     const [questions, setQuestions] = useState<string[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [retakesLeft, setRetakesLeft] = useState(MAX_RETAKES);
-    
     const [answers, setAnswers] = useState<Answer[]>([]);
+    const [feedback, setFeedback] = useState<string | null>(null);
     const [currentTranscript, setCurrentTranscript] = useState('');
     const [selectedProfession, setSelectedProfession] = useState<string>(professions[0]);
     
+    const [currentAudio, setCurrentAudio] = useState<string | null>(null);
+    const audioRef = useRef<HTMLAudioElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -179,26 +135,27 @@ export default function InterviewerPage() {
             // Quick fallback to ensure camera ready state
             setTimeout(() => {
                 console.log('1-second timeout: Forcing camera ready state.');
-                setIsCameraReady(true);
+                if (!isCameraReady) setIsCameraReady(true);
             }, 1000);
         } catch (error: any) {
             console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            if (error.name === 'NotAllowedError') {
+            if (error.name === "NotAllowedError") {
+                setHasCameraPermission(false);
                 toast({
                     variant: 'destructive',
                     title: 'Camera Access Denied',
                     description: 'Please allow camera and microphone access in your browser settings.'
                 });
             } else {
-                toast({
+                 setHasCameraPermission(false);
+                 toast({
                     variant: 'destructive',
                     title: 'Camera Error',
                     description: `Could not access camera. Please ensure it's not in use by another application. Error: ${error.message}`
                 });
             }
         }
-    }, [toast]);
+    }, [toast, isCameraReady]);
 
     // Effect for initializing camera
     useEffect(() => {
@@ -247,6 +204,12 @@ export default function InterviewerPage() {
         };
     }, [interviewState]);
 
+    useEffect(() => {
+        if (currentAudio && audioRef.current) {
+            audioRef.current.play().catch(e => console.error("Audio play failed", e));
+        }
+    }, [currentAudio]);
+
     // Fallback timer to ensure camera becomes ready
     useEffect(() => {
         if (hasCameraPermission && !isCameraReady) {
@@ -258,27 +221,46 @@ export default function InterviewerPage() {
         }
     }, [hasCameraPermission, isCameraReady]);
 
+    const generateAndPlayQuestion = async (questionText: string) => {
+        setInterviewState('generating-audio');
+        try {
+            const { audio, error } = await textToSpeech(questionText);
+            if (error || !audio) {
+                throw new Error(error || "Failed to generate audio.");
+            }
+            setCurrentAudio(audio);
+            setInterviewState('playing-audio');
+        } catch (e) {
+            console.error("Audio generation failed:", e);
+            toast({ variant: 'destructive', title: 'Audio Error', description: "Couldn't generate question audio. Starting without it." });
+            setInterviewState('preparing');
+            startPrepTimer();
+        }
+    };
+    
     const handleStartInterview = async () => {
-        console.log('Starting interview. Camera ready:', isCameraReady);
         if (!isCameraReady) {
             toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize.' });
             return;
         }
-        setInterviewState('preparing');
-        
-        // Generate questions
-        const professionRelated = professionQuestions[selectedProfession] || [];
-        const combinedQuestions = [
-            ...shuffleArray(generalQuestions).slice(0, 2),
-            ...shuffleArray(professionRelated).slice(0, 3)
-        ];
-        setQuestions(combinedQuestions);
-        setAnswers([]);
-        setCurrentQuestionIndex(0);
-        setRetakesLeft(MAX_RETAKES);
-        
-        resetPrepTimer();
-        startPrepTimer();
+        setInterviewState('generating');
+        setFeedback(null);
+        try {
+            const result = await generateQuestions({ profession: selectedProfession });
+            if (!result || result.questions.length === 0) {
+                throw new Error("AI failed to generate questions.");
+            }
+            setQuestions(result.questions);
+            setAnswers([]);
+            setCurrentQuestionIndex(0);
+            setRetakesLeft(MAX_RETAKES);
+            
+            await generateAndPlayQuestion(result.questions[0]);
+        } catch (error) {
+            console.error("Failed to start interview:", error);
+            toast({ variant: 'destructive', title: 'Interview Error', description: "Could not generate questions. Please try again."});
+            setInterviewState('error');
+        }
     };
     
     const startRecording = () => {
@@ -340,25 +322,31 @@ export default function InterviewerPage() {
         if (retakesLeft > 0) {
             setRetakesLeft(prev => prev - 1);
             setAnswers(prev => prev.slice(0, -1));
-            setInterviewState('preparing');
-            resetPrepTimer();
-            startPrepTimer();
+            generateAndPlayQuestion(questions[currentQuestionIndex]);
         }
     };
 
     const handleNextQuestion = () => {
         if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
+            const nextIdx = currentQuestionIndex + 1;
+            setCurrentQuestionIndex(nextIdx);
             setRetakesLeft(MAX_RETAKES);
-            setInterviewState('preparing');
-            resetPrepTimer();
-            startPrepTimer();
+            generateAndPlayQuestion(questions[nextIdx]);
         } else {
             finishInterview();
         }
     };
-
-    const finishInterview = () => {
+    
+    const finishInterview = async () => {
+        setInterviewState('analyzing');
+        try {
+            const questionsAndAnswers = answers.map(a => ({ question: a.question, answer: a.transcript }));
+            const result = await getInterviewFeedback({ profession: selectedProfession, questionsAndAnswers });
+            setFeedback(result.feedback);
+        } catch (error) {
+            console.error("Feedback generation failed:", error);
+            setFeedback("<p>Sorry, we couldn't generate feedback for this interview. Please try again later.</p>");
+        }
         setInterviewState('finished');
     };
 
@@ -373,6 +361,12 @@ export default function InterviewerPage() {
         setIsCameraReady(true);
     };
 
+    const handleAudioEnded = () => {
+        setCurrentAudio(null);
+        setInterviewState('preparing');
+        startPrepTimer();
+    };
+
     const renderInterviewerOverlay = () => {
         switch(interviewState) {
             case 'preparing':
@@ -383,6 +377,12 @@ export default function InterviewerPage() {
                 return <div className="text-center"><h2 className="text-xl font-semibold">Answer Submitted!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /></div>;
             case 'generating':
                 return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Generating Questions...</p></div>;
+            case 'generating-audio':
+                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Preparing Question Audio...</p></div>;
+            case 'playing-audio':
+                return <div className="text-center flex items-center gap-4"><Volume2 className="h-12 w-12 text-white" /> <p>Listen to the question...</p></div>;
+            case 'analyzing':
+                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Analyzing your answers...</p></div>;
             case 'finished':
                 return <div className="text-center"><h2 className="text-xl font-semibold">Interview Complete!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /><p>Well done! Review your results below.</p></div>;
             case 'error':
@@ -499,6 +499,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+            <audio ref={audioRef} src={currentAudio || ''} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
@@ -512,7 +513,7 @@ export default function InterviewerPage() {
                     </CardContent>
                 </Card>
 
-                {interviewState === 'finished' && (
+                {interviewState === 'finished' && feedback && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Star className="text-primary h-6 w-6" /> Your Results</CardTitle>
@@ -535,6 +536,14 @@ export default function InterviewerPage() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                                 <AccordionItem value="item-2">
+                                    <AccordionTrigger>
+                                        <div className="flex items-center gap-2"><Bot className="h-5 w-5" /> AI Feedback</div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: feedback }}/>
                                     </AccordionContent>
                                 </AccordionItem>
                             </Accordion>
