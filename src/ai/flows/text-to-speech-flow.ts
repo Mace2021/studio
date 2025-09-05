@@ -18,7 +18,8 @@ const TextToSpeechInputSchema = z.string();
 export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
 
 const TextToSpeechOutputSchema = z.object({
-  audio: z.string().describe("The base64 encoded WAV audio data URI."),
+  audio: z.string().describe("The base64 encoded WAV audio data URI.").optional(),
+  error: z.string().describe("An error message if audio generation failed.").optional(),
 });
 export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
 
@@ -60,32 +61,37 @@ const textToSpeechFlow = ai.defineFlow(
     outputSchema: TextToSpeechOutputSchema,
   },
   async (query) => {
-    const { media } = await ai.generate({
-        model: googleAI.model('gemini-2.5-flash-preview-tts'),
-        config: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Algenib' },
+    try {
+        const { media } = await ai.generate({
+            model: googleAI.model('gemini-2.5-flash-preview-tts'),
+            config: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Algenib' },
+                },
+              },
             },
-          },
-        },
-        prompt: query,
-      });
+            prompt: query,
+          });
 
-      if (!media) {
-        throw new Error('No media returned from TTS model.');
-      }
-      
-      const audioBuffer = Buffer.from(
-        media.url.substring(media.url.indexOf(',') + 1),
-        'base64'
-      );
+        if (!media) {
+            throw new Error('No media returned from TTS model.');
+        }
+        
+        const audioBuffer = Buffer.from(
+            media.url.substring(media.url.indexOf(',') + 1),
+            'base64'
+        );
 
-      const wavData = await toWav(audioBuffer);
+        const wavData = await toWav(audioBuffer);
 
-      return {
-        audio: 'data:audio/wav;base64,' + wavData,
-      };
+        return {
+            audio: 'data:audio/wav;base64,' + wavData,
+        };
+    } catch (error: any) {
+        console.error("Text-to-speech flow error:", error);
+        return { error: "Failed to generate audio." };
+    }
   }
 );

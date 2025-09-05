@@ -14,6 +14,7 @@ import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/intervi
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 5; // seconds
@@ -89,24 +90,25 @@ export default function InterviewerPage() {
 
   useEffect(() => {
     const getCameraPermission = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setHasCameraPermission(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+      if (hasCameraPermission === null) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this app.',
+          });
         }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
       }
     };
-
+  
     getCameraPermission();
 
     // Setup SpeechRecognition
@@ -135,7 +137,7 @@ export default function InterviewerPage() {
       }
       recognitionRef.current?.stop();
     };
-  }, [toast]);
+  }, [hasCameraPermission, toast]);
   
   useEffect(() => {
       if (interviewState === 'listening' && currentAudio && audioRef.current) {
@@ -148,9 +150,13 @@ export default function InterviewerPage() {
 
   const getQuestionAudio = async (questionText: string) => {
       try {
-          const { audio } = await textToSpeech(questionText);
-          setCurrentAudio(audio);
-          setInterviewState('listening');
+          const result = await textToSpeech(questionText);
+          if (result.audio) {
+            setCurrentAudio(result.audio);
+            setInterviewState('listening');
+          } else {
+             throw new Error(result.error || "Audio generation failed without a specific error.");
+          }
       } catch (error) {
           console.error("TTS Error:", error);
           toast({ 
@@ -163,6 +169,12 @@ export default function InterviewerPage() {
   }
 
   const handleStartInterview = async () => {
+    if (hasCameraPermission !== true) {
+      toast({ variant: 'destructive', title: 'Camera Required', description: 'Please enable camera access before starting.'});
+      // Attempt to re-request permission
+      setHasCameraPermission(null);
+      return;
+    }
     setInterviewState('generating');
     setAnswers([]);
     setFeedback(null);
@@ -186,7 +198,7 @@ export default function InterviewerPage() {
 
   function startRecording() {
     if (!videoRef.current?.srcObject) {
-      toast({ variant: 'destructive', title: 'Error', description: 'No camera stream available.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'No camera stream available. Please refresh and grant permissions.' });
       setInterviewState('error');
       return;
     }
@@ -454,5 +466,3 @@ export default function InterviewerPage() {
     </div>
   );
 }
-
-    
