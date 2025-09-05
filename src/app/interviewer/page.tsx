@@ -7,7 +7,7 @@ import { useTimer } from 'use-timer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare } from 'lucide-react';
+import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions-flow';
 import { getInterviewFeedback, InterviewFeedbackInput } from '@/ai/flows/interview-feedback-flow';
@@ -53,6 +53,7 @@ interface Answer {
 
 export default function InterviewerPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [interviewState, setInterviewState] = useState<InterviewState>('idle');
   const [questions, setQuestions] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -97,9 +98,11 @@ export default function InterviewerPage() {
             videoRef.current.srcObject = stream;
           }
           setHasCameraPermission(true);
+          setIsCameraReady(true);
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
+          setIsCameraReady(false);
           toast({
             variant: 'destructive',
             title: 'Camera Access Denied',
@@ -156,7 +159,6 @@ export default function InterviewerPage() {
           setCurrentAudio(result.audio);
           setInterviewState('listening');
         } else {
-           // The flow returned an error, so we handle it gracefully
            console.warn("Audio generation failed:", result.error);
            toast({ 
               variant: 'default', 
@@ -177,6 +179,10 @@ export default function InterviewerPage() {
   }
 
   const handleStartInterview = async () => {
+    if (!isCameraReady) {
+      toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize before starting.'});
+      return;
+    }
     if (hasCameraPermission !== true) {
       toast({ variant: 'destructive', title: 'Camera Required', description: 'Please enable camera access before starting.'});
       // Attempt to re-request permission
@@ -295,6 +301,9 @@ export default function InterviewerPage() {
       setCurrentQuestionIndex(0);
       setRetakesLeft(MAX_RETAKES);
       setCurrentAudio(null);
+      // Reset camera state to trigger permission check if needed
+      setHasCameraPermission(null);
+      setIsCameraReady(false);
   }
   
   const renderInterviewerContent = () => {
@@ -341,7 +350,7 @@ export default function InterviewerPage() {
             <AlertDescription>Please allow camera and microphone access to use this feature.</AlertDescription>
         </Alert>
     );
-    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (hasCameraPermission === null && !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing camera...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
@@ -356,7 +365,10 @@ export default function InterviewerPage() {
                         {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button onClick={handleStartInterview}>Start Interview</Button>
+                <Button onClick={handleStartInterview} disabled={!isCameraReady}>
+                    {!isCameraReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+                    {isCameraReady ? 'Start Interview' : 'Camera Loading...'}
+                </Button>
             </div>
         </div>
     );
@@ -367,27 +379,25 @@ export default function InterviewerPage() {
 
     return (
         <div className="w-full space-y-4">
-            <div className="grid md:grid-cols-2 gap-6 items-center">
-                 <Card className="bg-muted/50 aspect-video flex items-center justify-center">
+            <div className="grid md:grid-cols-2 gap-6">
+                 <Card className="bg-muted/50 aspect-video flex items-center justify-center p-4">
                    {isInterviewActive ? (
-                        <div className="relative w-48 h-48">
-                            <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
+                        <div className="text-center">
+                            <div className="relative w-32 h-32 mx-auto mb-4">
+                                <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" layout="fill" objectFit="cover" className="rounded-full" alt="Interviewer" />
+                            </div>
+                            {renderInterviewerContent()}
                         </div>
                    ) : renderInterviewerContent()}
                 </Card>
                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
-                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", interviewState !== 'reviewing' ? 'opacity-100' : 'opacity-0')} autoPlay muted playsInline />
+                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", interviewState === 'reviewing' ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
                     {interviewState === 'reviewing' && lastAnswerUrl && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
                     <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
                       {hasCameraPermission ? <><Video className="h-4 w-4 text-green-500"/> ON</> : <><VideoOff className="h-4 w-4 text-red-500"/> OFF</> }
                     </div>
-                     {isInterviewActive && interviewState === 'reviewing' && (
-                         <div className="absolute inset-0 flex items-center justify-center z-20">
-                            {renderInterviewerContent()}
-                         </div>
-                     )}
                 </div>
             </div>
 
@@ -412,8 +422,6 @@ export default function InterviewerPage() {
         </div>
     )
   };
-
-  const isInterviewStarted = interviewState !== 'idle';
   
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
