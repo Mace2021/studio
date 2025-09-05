@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useTimer } from 'use-timer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Video, VideoOff, RefreshCw, Check, Loader2, Play, Bot, Star, ChevronDown, UserSquare, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuestions } from '@/ai/flows/generate-questions-flow';
@@ -69,6 +69,7 @@ export default function InterviewerPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const stopRecognitionOnPurpose = useRef(false);
   const { toast } = useToast();
 
   const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer } = useTimer({
@@ -100,11 +101,11 @@ export default function InterviewerPage() {
 
       } catch (error: any) {
         if (error.name === 'NotAllowedError') {
-            // This is a user choice, not a technical error.
+            setHasCameraPermission(false);
         } else {
             console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
         }
-        setHasCameraPermission(false);
         setIsCameraReady(false);
       }
   };
@@ -112,12 +113,12 @@ export default function InterviewerPage() {
    useEffect(() => {
     getCameraPermission();
 
-    // Setup SpeechRecognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
+
       recognition.onresult = (event) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -129,6 +130,14 @@ export default function InterviewerPage() {
              setCurrentTranscript(prev => prev.trim() ? `${prev} ${finalTranscript}` : finalTranscript);
         }
       };
+
+      recognition.onend = () => {
+        if (interviewState === 'recording' && !stopRecognitionOnPurpose.current) {
+            console.log("Speech recognition ended unexpectedly, restarting...");
+            recognition.start();
+        }
+      }
+      
       recognitionRef.current = recognition;
     }
 
@@ -137,7 +146,10 @@ export default function InterviewerPage() {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
       }
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+          stopRecognitionOnPurpose.current = true;
+          recognitionRef.current.stop();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -241,7 +253,10 @@ export default function InterviewerPage() {
     
     mediaRecorderRef.current = recorder;
     mediaRecorderRef.current.start();
-    recognitionRef.current?.start();
+    if (recognitionRef.current) {
+        stopRecognitionOnPurpose.current = false;
+        recognitionRef.current.start();
+    }
   }
 
   const stopRecording = () => {
@@ -249,6 +264,7 @@ export default function InterviewerPage() {
         mediaRecorderRef.current.stop();
     }
     if (recognitionRef.current) {
+        stopRecognitionOnPurpose.current = true;
         recognitionRef.current.stop();
     }
   };
@@ -379,7 +395,6 @@ export default function InterviewerPage() {
         </div>
     );
 
-    const isInterviewActive = !['idle', 'generating', 'finished', 'error'].includes(interviewState);
     const lastAnswerUrl = answers.length > 0 ? answers[answers.length - 1].videoUrl : null;
     const currentQuestion = questions[currentQuestionIndex];
 
