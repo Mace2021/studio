@@ -81,7 +81,6 @@ interface Answer {
 
 export default function InterviewerPage() {
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [isCameraReady, setIsCameraReady] = useState(false);
     const [interviewState, setInterviewState] = useState<InterviewState>('idle');
     const [questions, setQuestions] = useState<string[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -118,62 +117,51 @@ export default function InterviewerPage() {
         },
     });
 
-    const getCameraPermission = useCallback(async () => {
-      console.log('Requesting camera permission...');
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true,
-        });
-        console.log('Camera permission granted');
-        streamRef.current = stream;
-        setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // The onCanPlay event handler will set the camera to ready
-        } else {
-            // Fallback if videoRef is not available yet
-            setTimeout(() => {
-                if (videoRef.current) videoRef.current.srcObject = stream;
-            }, 100);
+    const cleanupStream = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+            console.log('Camera stream cleaned up.');
         }
-      } catch (error: any) {
-        console.error('Camera permission error:', error);
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please allow camera and microphone access in your browser settings.',
-          });
-        } else {
-          setHasCameraPermission(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Error',
-            description: `Could not access camera. Please ensure it's not in use by another application. Error: ${error.message}`,
-          });
-        }
-      }
-    }, [toast]);
-    
-    // Effect to initialize camera on first load
-    useEffect(() => {
-        getCameraPermission();
-    }, [getCameraPermission]);
+    }, []);
 
-    // Effect to setup and teardown speech recognition
+    // Effect for camera and speech recognition initialization
     useEffect(() => {
-         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        const initialize = async () => {
+            console.log('Initializing camera and speech recognition...');
+            cleanupStream();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: true,
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+                setHasCameraPermission(true);
+                console.log('Camera permission granted and stream attached.');
+            } catch (error: any) {
+                console.error('Camera permission error:', error);
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Camera Access Denied',
+                    description: `Please allow camera and microphone access. Error: ${error.message}`,
+                });
+            }
+        };
+
+        initialize();
+
+        if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
+            const recognition = recognitionRef.current;
+            recognition.continuous = true;
+            recognition.interimResults = true;
 
-            recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+            recognition.onresult = (event: SpeechRecognitionEvent) => {
                 let finalTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
@@ -185,8 +173,7 @@ export default function InterviewerPage() {
                 }
             };
             
-            recognitionRef.current.onend = () => {
-                // Only restart if we are in the recording state and it wasn't stopped on purpose
+            recognition.onend = () => {
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
                     console.log('Speech recognition ended unexpectedly, restarting...');
                     recognitionRef.current?.start();
@@ -195,16 +182,11 @@ export default function InterviewerPage() {
         }
 
         return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                console.log('Camera stream stopped on component unmount.');
-            }
+            cleanupStream();
             if (recognitionRef.current) {
-                stopRecognitionOnPurpose.current = true;
                 recognitionRef.current.abort();
             }
         };
-    // This effect should only run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
@@ -225,8 +207,8 @@ export default function InterviewerPage() {
     };
     
     const handleStartInterview = async () => {
-        if (!isCameraReady) {
-            toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize or grant permission.' });
+        if (!hasCameraPermission) {
+            toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please grant camera permission to start.' });
             return;
         }
         setInterviewState('generating');
@@ -245,7 +227,7 @@ export default function InterviewerPage() {
     };
     
     const startRecording = () => {
-        if (!streamRef.current || !isCameraReady) {
+        if (!streamRef.current) {
             setInterviewState('error');
             toast({ variant: 'destructive', title: 'Camera Error', description: 'Camera is not available to start recording.' });
             return;
@@ -332,17 +314,7 @@ export default function InterviewerPage() {
     };
 
     const restartInterview = () => {
-        setInterviewState('idle');
-        setHasCameraPermission(null);
-        setIsCameraReady(false);
-        getCameraPermission();
-    };
-    
-    const handleCameraReady = () => {
-        if (!isCameraReady) {
-            console.log("Camera ready event fired. State is now ready.");
-            setIsCameraReady(true);
-        }
+        window.location.reload();
     };
 
     const handleAudioEnded = () => {
@@ -384,11 +356,11 @@ export default function InterviewerPage() {
                 <AlertDescription>
                     Please allow camera and microphone access. You may need to reload the page after granting permissions.
                 </AlertDescription>
-                <Button variant="secondary" size="sm" className="mt-4" onClick={getCameraPermission}>Try Again</Button>
+                <Button variant="secondary" size="sm" className="mt-4" onClick={() => window.location.reload()}>Reload Page</Button>
             </Alert>
         );
         
-        if (hasCameraPermission === null || (hasCameraPermission && !isCameraReady)) return (
+        if (hasCameraPermission === null) return (
             <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin" />
                 <span className="ml-2">Initializing Camera...</span>
@@ -408,9 +380,9 @@ export default function InterviewerPage() {
                             {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button onClick={handleStartInterview} disabled={!isCameraReady}>
-                        {!isCameraReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                        {isCameraReady ? 'Start Interview' : 'Camera Loading...'}
+                    <Button onClick={handleStartInterview} disabled={!hasCameraPermission}>
+                        {!hasCameraPermission ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+                        {hasCameraPermission ? 'Start Interview' : 'Camera Loading...'}
                     </Button>
                 </div>
             </div>
@@ -444,7 +416,6 @@ export default function InterviewerPage() {
                     <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                         <video
                             ref={videoRef}
-                            onCanPlay={handleCameraReady}
                             className={cn("w-full h-full object-cover transition-opacity", showPlayer ? 'opacity-0' : 'opacity-100')}
                             autoPlay
                             muted
@@ -454,7 +425,7 @@ export default function InterviewerPage() {
                             <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                         )}
                         <div className="absolute top-1 left-1 flex items-center gap-1 bg-black/50 text-white text-xs p-1 rounded-md">
-                            {isCameraReady ? <><Video className="h-3 w-3 text-green-500" /> ON</> : <><VideoOff className="h-3 w-3 text-red-500" /> OFF</>}
+                            {hasCameraPermission ? <><Video className="h-3 w-3 text-green-500" /> ON</> : <><VideoOff className="h-3 w-3 text-red-500" /> OFF</>}
                         </div>
                     </div>
                 </div>
