@@ -18,9 +18,10 @@ interface KanbanCardProps extends React.HTMLAttributes<HTMLDivElement> {
   task: Task;
   onEdit: (newContent: string, newDescription?: string, newStart?: Date, newEnd?: Date) => void;
   onDelete: () => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void;
 }
 
-export const KanbanCard = ({ task, onEdit, onDelete, className, ...props }: KanbanCardProps) => {
+export const KanbanCard = ({ task, onEdit, onDelete, onDrop, className, ...props }: KanbanCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(task.content);
   const [description, setDescription] = useState(task.description || '');
@@ -35,6 +36,8 @@ export const KanbanCard = ({ task, onEdit, onDelete, className, ...props }: Kanb
   return (
     <Card 
         className={cn("bg-card shadow-sm hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing", className)}
+        onDrop={(e) => onDrop(e, task.id)}
+        onDragOver={(e) => e.preventDefault()}
         {...props}
     >
       <CardHeader className="p-3 pb-0">

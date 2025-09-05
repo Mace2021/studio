@@ -78,30 +78,39 @@ export default function KanbanPage() {
         }
     }, [tasks, columns, isLoaded]);
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string, targetTaskId?: string) => {
         e.preventDefault();
+        e.stopPropagation();
+
         const sourceColumnId = e.dataTransfer.getData("sourceColumnId");
-        const taskId = e.dataTransfer.getData("taskId");
+        const movedTaskId = e.dataTransfer.getData("taskId");
         
-        if (!sourceColumnId || !taskId) return;
+        if (!sourceColumnId || !movedTaskId) return;
 
+        // Find and remove the moved task from its source column
         const sourceTasks = [...(tasks[sourceColumnId] || [])];
-        const taskIndex = sourceTasks.findIndex(t => t.id === taskId);
-        if(taskIndex === -1) return;
-
+        const taskIndex = sourceTasks.findIndex(t => t.id === movedTaskId);
+        if (taskIndex === -1) return;
         const [movedTask] = sourceTasks.splice(taskIndex, 1);
 
-        if (sourceColumnId === targetColumnId) {
-            setTasks(prev => ({ ...prev, [sourceColumnId]: sourceTasks }));
-        } else {
-             const targetTasks = [...(tasks[targetColumnId] || [])];
-             targetTasks.push(movedTask);
-             setTasks(prev => ({
-                ...prev,
-                [sourceColumnId]: sourceTasks,
-                [targetColumnId]: targetTasks,
-             }));
+        const newTasksState = { ...tasks, [sourceColumnId]: sourceTasks };
+
+        // Add the moved task to the target column
+        let targetTasks = [...(newTasksState[targetColumnId] || [])];
+
+        if (targetTaskId) { // Dropped on a specific task
+            const dropIndex = targetTasks.findIndex(t => t.id === targetTaskId);
+            if (dropIndex !== -1) {
+                targetTasks.splice(dropIndex, 0, movedTask);
+            } else { // Should not happen if targetTaskId is valid
+                targetTasks.push(movedTask);
+            }
+        } else { // Dropped on the column itself (at the end)
+            targetTasks.push(movedTask);
         }
+        
+        newTasksState[targetColumnId] = targetTasks;
+        setTasks(newTasksState);
     };
     
     const handleAddTask = (columnId: string, content: string, start?: Date, end?: Date) => {
@@ -175,5 +184,3 @@ export default function KanbanPage() {
     </div>
   );
 }
-
-    

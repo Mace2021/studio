@@ -13,7 +13,7 @@ interface KanbanColumnProps {
   onAddTask: (columnId: string, content: string, start?: Date, end?: Date) => void;
   onEditTask: (columnId: string, taskId: string, newContent: string, newDescription?: string, newStart?: Date, newEnd?: Date) => void;
   onDeleteTask: (columnId: string, taskId: string) => void;
-  onDrop: (e: React.DragEvent<HTMLDivElement>, columnId: string) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>, columnId: string, taskId?: string) => void;
 }
 
 export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTask, onDrop }: KanbanColumnProps) => {
@@ -48,10 +48,12 @@ export const KanbanColumn = ({ column, tasks, onAddTask, onEditTask, onDeleteTas
             task={task}
             onEdit={(newContent, newDescription, newStart, newEnd) => onEditTask(column.id, task.id, newContent, newDescription, newStart, newEnd)}
             onDelete={() => onDeleteTask(column.id, task.id)}
+            onDrop={(e) => onDrop(e, column.id, task.id)}
             draggable
             onDragStart={(e) => {
                 e.dataTransfer.setData("taskId", task.id);
                 e.dataTransfer.setData("sourceColumnId", column.id);
+                e.stopPropagation();
             }}
           />
         ))}
