@@ -95,19 +95,15 @@ export default function InterviewerPage() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setHasCameraPermission(true);
-        
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-
       } catch (error: any) {
+        console.error('Error accessing camera:', error);
         if (error.name === 'NotAllowedError') {
-            setHasCameraPermission(false);
-        } else {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
+          setHasCameraPermission(false);
         }
-        setIsCameraReady(false);
+        setIsCameraReady(false); // Explicitly set to false on any error
       }
   };
 
@@ -116,8 +112,8 @@ export default function InterviewerPage() {
 
     // Check if SpeechRecognition is available and initialize it
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!recognitionRef.current) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
@@ -135,11 +131,10 @@ export default function InterviewerPage() {
             };
             
             recognition.onend = () => {
-            // Only restart if the recording wasn't stopped intentionally
-            if (interviewState === 'recording' && !stopRecognitionOnPurpose.current) {
-                console.log("Speech recognition ended unexpectedly, restarting...");
+              if (!stopRecognitionOnPurpose.current) {
+                console.log("Speech recognition ended, restarting...");
                 recognition.start();
-            }
+              }
             }
             
             recognitionRef.current = recognition;
@@ -177,8 +172,7 @@ export default function InterviewerPage() {
           setCurrentAudio(result.audio);
           setInterviewState('listening');
         } else {
-           // The flow returned an error, so we handle it gracefully
-           console.warn("Audio generation failed:", result.error);
+           console.error("Audio generation failed:", result.error);
            toast({ 
               variant: 'default', 
               title: 'Audio Unavailable', 
@@ -430,7 +424,7 @@ export default function InterviewerPage() {
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
                      <div className="absolute top-1 left-1 flex items-center gap-1 bg-black/50 text-white text-xs p-1 rounded-md">
-                      {hasCameraPermission ? <><Video className="h-3 w-3 text-green-500"/> ON</> : <><VideoOff className="h-3 w-3 text-red-500"/> OFF</> }
+                      {isCameraReady ? <><Video className="h-3 w-3 text-green-500"/> ON</> : <><VideoOff className="h-3 w-3 text-red-500"/> OFF</> }
                     </div>
                </div>
            </div>
