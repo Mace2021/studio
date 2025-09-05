@@ -94,11 +94,14 @@ export default function InterviewerPage() {
       if (hasCameraPermission === null) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          setHasCameraPermission(true);
+          
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
-          setHasCameraPermission(true);
-          setIsCameraReady(true);
+          // Add a small delay to ensure the stream is fully attached
+          setTimeout(() => setIsCameraReady(true), 500);
+
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
@@ -160,7 +163,6 @@ export default function InterviewerPage() {
           setInterviewState('listening');
         } else {
            // The flow returned an error, so we handle it gracefully
-           console.warn("Audio generation failed:", result.error);
            toast({ 
               variant: 'default', 
               title: 'Audio Generation Unavailable', 
@@ -339,7 +341,7 @@ export default function InterviewerPage() {
                 </div>
             );
         default:
-            return <div className="flex flex-col items-center justify-center text-center"><UserSquare className="h-24 w-24 text-muted-foreground mb-4" /><p className="text-muted-foreground">The interviewer will appear here.</p></div>
+            return <div className="flex flex-col items-center justify-center text-center h-full"><UserSquare className="h-24 w-24 text-muted-foreground mb-4" /><p className="text-muted-foreground">The interviewer will appear here.</p></div>
     }
   }
 
@@ -348,10 +350,10 @@ export default function InterviewerPage() {
         <Alert variant="destructive">
             <VideoOff className="h-4 w-4" />
             <AlertTitle>Camera Access Required</AlertTitle>
-            <AlertDescription>Please allow camera and microphone access to use this feature.</AlertDescription>
+            <AlertDescription>Please allow camera and microphone access to use this feature. You may need to reload the page after granting permissions.</AlertDescription>
         </Alert>
     );
-    if (hasCameraPermission === null || !isCameraReady) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Initializing camera...</span></div>;
+    if (hasCameraPermission === null) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Requesting camera access...</span></div>;
 
     if (interviewState === 'idle') return (
         <div className="text-center">
@@ -382,16 +384,16 @@ export default function InterviewerPage() {
         <div className="w-full space-y-4">
             <div className="grid md:grid-cols-2 gap-6">
                  <Card className="bg-muted/50 aspect-video flex items-center justify-center p-4">
-                   <div className="text-center">
+                    <div className="text-center">
                         <div className="relative w-32 h-32 mx-auto mb-4">
                             <Image src="https://picsum.photos/300/300" data-ai-hint="professional person" fill sizes="128px" className="rounded-full object-cover" alt="Interviewer" />
                         </div>
                         {renderInterviewerContent()}
                     </div>
-                </Card>
+                 </Card>
                 <div className="aspect-video w-full bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
-                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", interviewState === 'reviewing' ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
-                    {interviewState === 'reviewing' && lastAnswerUrl && (
+                    <video ref={videoRef} className={cn("w-full h-full object-cover transition-opacity", (interviewState === 'reviewing' && lastAnswerUrl) ? 'opacity-0' : 'opacity-100')} autoPlay muted playsInline />
+                    {(interviewState === 'reviewing' && lastAnswerUrl) && (
                         <video key={lastAnswerUrl} src={lastAnswerUrl} className="absolute inset-0 w-full h-full object-cover z-10" controls autoPlay loop />
                     )}
                     <div className="absolute top-2 left-2 flex items-center gap-2 bg-black/50 text-white text-xs p-1 rounded-md">
