@@ -1,4 +1,5 @@
- 'use client';
+
+'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
@@ -160,112 +161,67 @@ export default function InterviewerPage() {
     });
 
     const getCameraPermission = useCallback(async () => {
+        console.log('Attempting to get camera permissions...');
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+        }
         try {
-            console.log('Requesting camera permission...');
-            
-            // Stop any existing stream first
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
-
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }, 
+                video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
                 audio: true 
             });
-            
-            console.log('Camera permission granted, got stream:', stream);
             streamRef.current = stream;
+            console.log('Camera permission granted.');
             setHasCameraPermission(true);
-            
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                
-                // Add event listeners for video element
-                const handleLoadedMetadata = () => {
-                    console.log('Video metadata loaded');
-                    setIsCameraReady(true);
-                };
-                
-                const handleCanPlay = () => {
-                    console.log('Video can play');
-                    if (videoRef.current) {
-                        videoRef.current.play().catch(err => {
-                            console.error('Error playing video:', err);
-                        });
-                    }
-                };
-
-                const handleError = (error: Event) => {
-                    console.error('Video error:', error);
-                    setIsCameraReady(false);
-                };
-
-                videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-                videoRef.current.addEventListener('canplay', handleCanPlay);
-                videoRef.current.addEventListener('error', handleError);
-
-                // Load the video
-                videoRef.current.load();
-
-                // Cleanup function for event listeners
-                return () => {
-                    if (videoRef.current) {
-                        videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-                        videoRef.current.removeEventListener('canplay', handleCanPlay);
-                        videoRef.current.removeEventListener('error', handleError);
-                    }
-                };
             }
+            // Quick fallback to ensure camera ready state
+            setTimeout(() => {
+                console.log('1-second timeout: Forcing camera ready state.');
+                setIsCameraReady(true);
+            }, 1000);
         } catch (error: any) {
-            console.error('Camera permission error:', error);
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
             if (error.name === 'NotAllowedError') {
-                setHasCameraPermission(false);
                 toast({
                     variant: 'destructive',
                     title: 'Camera Access Denied',
                     description: 'Please allow camera and microphone access in your browser settings.'
                 });
-            } else if (error.name === 'NotFoundError') {
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'No Camera Found',
-                    description: 'Please make sure your camera is connected and try again.'
-                });
             } else {
-                setHasCameraPermission(false);
                 toast({
                     variant: 'destructive',
                     title: 'Camera Error',
-                    description: `Failed to access camera: ${error.message}`
+                    description: `Could not access camera. Please ensure it's not in use by another application. Error: ${error.message}`
                 });
             }
         }
     }, [toast]);
 
-    // Initialize camera and speech recognition
+    // Effect for initializing camera
     useEffect(() => {
-        let cleanup: (() => void) | undefined;
+        if (hasCameraPermission === null) {
+            getCameraPermission();
+        }
 
-        const initializeCamera = async () => {
-            if (hasCameraPermission === null) {
-                cleanup = await getCameraPermission();
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
             }
         };
+    }, [hasCameraPermission, getCameraPermission]);
 
-        initializeCamera();
-
-        // Initialize speech recognition
+    // Effect for initializing speech recognition
+    useEffect(() => {
         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            
-            recognition.onresult = (event: SpeechRecognitionEvent) => {
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.interimResults = true;
+
+            recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
                 let finalTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
@@ -277,48 +233,35 @@ export default function InterviewerPage() {
                 }
             };
             
-            recognition.onend = () => {
-                if (!stopRecognitionOnPurpose.current && (interviewState === 'recording' || interviewState === 'reviewing')) {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Speech recognition restart error:', error);
-                    }
+            recognitionRef.current.onend = () => {
+                if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
+                    recognitionRef.current?.start();
                 }
             };
-            recognitionRef.current = recognition;
         }
 
         return () => {
-            // Cleanup camera
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
-            
-            // Cleanup speech recognition
             if (recognitionRef.current) {
-                stopRecognitionOnPurpose.current = true;
-                try {
-                    recognitionRef.current.stop();
-                } catch (error) {
-                    console.error('Error stopping speech recognition:', error);
-                }
-            }
-
-            // Call cleanup function from getCameraPermission if it exists
-            if (cleanup) {
-                cleanup();
+                recognitionRef.current.stop();
             }
         };
-    }, [hasCameraPermission, getCameraPermission, interviewState]);
+    }, [interviewState]);
+
+    // Fallback timer to ensure camera becomes ready
+    useEffect(() => {
+        if (hasCameraPermission && !isCameraReady) {
+            const timer = setTimeout(() => {
+                console.log('5-second fallback: Setting camera to ready.');
+                setIsCameraReady(true);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [hasCameraPermission, isCameraReady]);
 
     const handleStartInterview = async () => {
+        console.log('Starting interview. Camera ready:', isCameraReady);
         if (!isCameraReady) {
             toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please wait for camera to initialize.' });
-            return;
-        }
-        if (hasCameraPermission !== true) {
-            toast({ variant: 'destructive', title: 'Camera Required', description: 'Please enable camera access.' });
             return;
         }
         setInterviewState('preparing');
@@ -326,8 +269,8 @@ export default function InterviewerPage() {
         // Generate questions
         const professionRelated = professionQuestions[selectedProfession] || [];
         const combinedQuestions = [
-            ...shuffleArray(generalQuestions).slice(0, 5),
-            ...shuffleArray(professionRelated).slice(0, 5)
+            ...shuffleArray(generalQuestions).slice(0, 2),
+            ...shuffleArray(professionRelated).slice(0, 3)
         ];
         setQuestions(combinedQuestions);
         setAnswers([]);
@@ -341,9 +284,10 @@ export default function InterviewerPage() {
     const startRecording = () => {
         if (!streamRef.current) {
             console.error('No stream available for recording');
-            return setInterviewState('error');
+            setInterviewState('error');
+            return;
         }
-
+        console.log('Starting recording...');
         setInterviewState('recording');
         setCurrentTranscript('');
         resetResponseTimer();
@@ -351,15 +295,15 @@ export default function InterviewerPage() {
         
         try {
             const recorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+            mediaRecorderRef.current = recorder;
             const chunks: Blob[] = [];
 
             recorder.ondataavailable = (event) => { 
-                if(event.data.size > 0) {
-                    chunks.push(event.data);
-                }
+                if(event.data.size > 0) chunks.push(event.data);
             };
             
             recorder.onstop = () => {
+                console.log('Recording stopped.');
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 setAnswers(prev => [...prev, { 
@@ -371,24 +315,13 @@ export default function InterviewerPage() {
                 pauseResponseTimer();
             };
             
-            mediaRecorderRef.current = recorder;
-            mediaRecorderRef.current.start();
-            
+            recorder.start();
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = false;
-                try {
-                    recognitionRef.current.start();
-                } catch (error) {
-                    console.error('Error starting speech recognition:', error);
-                }
+                recognitionRef.current.start();
             }
         } catch (error) {
             console.error('Error starting recording:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Recording Error',
-                description: 'Failed to start recording. Please try again.'
-            });
             setInterviewState('error');
         }
     };
@@ -399,11 +332,7 @@ export default function InterviewerPage() {
         }
         if (recognitionRef.current) {
             stopRecognitionOnPurpose.current = true;
-            try {
-                recognitionRef.current.stop();
-            } catch (error) {
-                console.error('Error stopping speech recognition:', error);
-            }
+            recognitionRef.current.stop();
         }
     };
 
@@ -417,32 +346,31 @@ export default function InterviewerPage() {
         }
     };
 
-    const handleNextQuestion = async () => {
+    const handleNextQuestion = () => {
         if (currentQuestionIndex < questions.length - 1) {
-            const nextIndex = currentQuestionIndex + 1;
-            setCurrentQuestionIndex(nextIndex);
+            setCurrentQuestionIndex(prev => prev + 1);
             setRetakesLeft(MAX_RETAKES);
             setInterviewState('preparing');
             resetPrepTimer();
             startPrepTimer();
         } else {
-            await finishInterview();
+            finishInterview();
         }
     };
 
-    const finishInterview = async () => {
+    const finishInterview = () => {
         setInterviewState('finished');
     };
 
     const restartInterview = () => {
         setInterviewState('idle');
-        setQuestions([]);
-        setAnswers([]);
-        setCurrentQuestionIndex(0);
-        setRetakesLeft(MAX_RETAKES);
         setHasCameraPermission(null);
         setIsCameraReady(false);
-        getCameraPermission();
+    };
+    
+    const handleCameraReady = () => {
+        console.log('Camera is ready (onCanPlay/onLoadedMetadata)');
+        setIsCameraReady(true);
     };
 
     const renderInterviewerOverlay = () => {
@@ -457,6 +385,8 @@ export default function InterviewerPage() {
                 return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Generating Questions...</p></div>;
             case 'finished':
                 return <div className="text-center"><h2 className="text-xl font-semibold">Interview Complete!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /><p>Well done! Review your results below.</p></div>;
+            case 'error':
+                 return <div className="text-center text-red-400"><h2 className="text-xl font-semibold">An Error Occurred</h2><p>Please refresh the page and try again.</p></div>;
             default:
                 return <div className="flex flex-col items-center justify-center text-center h-full"><UserSquare className="h-24 w-24 text-white/50 mb-4" /><p className="text-white/80">The interviewer will appear here.</p></div>
         }
@@ -470,7 +400,7 @@ export default function InterviewerPage() {
                 <AlertDescription>
                     Please allow camera and microphone access. You may need to reload the page after granting permissions.
                 </AlertDescription>
-                <Button variant="secondary" size="sm" className="mt-4" onClick={getCameraPermission}>Try Again</Button>
+                <Button variant="secondary" size="sm" className="mt-4" onClick={() => getCameraPermission()}>Try Again</Button>
             </Alert>
         );
         
@@ -529,6 +459,8 @@ export default function InterviewerPage() {
                     <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                         <video
                             ref={videoRef}
+                            onLoadedMetadata={handleCameraReady}
+                            onCanPlay={handleCameraReady}
                             className={cn("w-full h-full object-cover transition-opacity", showPlayer ? 'opacity-0' : 'opacity-100')}
                             autoPlay
                             muted
@@ -613,3 +545,5 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
+    
