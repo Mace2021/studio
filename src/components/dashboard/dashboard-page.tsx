@@ -387,6 +387,7 @@ export default function DashboardPage() {
                       width={1200}
                       height={600}
                       className="w-full max-w-4xl rounded-lg border shadow-md mb-4"
+                      priority
                   />
                   <h2 className="text-2xl font-headline mt-4">Powerful Dashboards Made Easy</h2>
                   <p className="text-muted-foreground max-w-2xl">
