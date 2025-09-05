@@ -116,53 +116,57 @@ export default function InterviewerPage() {
     });
 
     const getCameraPermission = useCallback(async () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
+      console.log('Requesting camera permission...');
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true,
+        });
+        console.log('Camera permission granted');
+        streamRef.current = stream;
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
         }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 640 }, height: { ideal: 480 } }, 
-                audio: true 
-            });
-            streamRef.current = stream;
-            setHasCameraPermission(true);
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-        } catch (error: any) {
-            if (error.name === "NotAllowedError") {
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please allow camera and microphone access in your browser settings.'
-                });
-            } else {
-                 setHasCameraPermission(false);
-                 toast({
-                    variant: 'destructive',
-                    title: 'Camera Error',
-                    description: `Could not access camera. Please ensure it's not in use by another application. Error: ${error.message}`
-                });
-            }
+      } catch (error: any) {
+        if (error.name === 'NotAllowedError') {
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please allow camera and microphone access in your browser settings.',
+          });
+        } else {
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Error',
+            description: `Could not access camera. Please ensure it's not in use by another application. Error: ${error.message}`,
+          });
         }
+      }
     }, [toast]);
-
-    // Effect for initializing camera
+    
+    // Combined initialization effect
     useEffect(() => {
+        let cameraReadyTimer: NodeJS.Timeout;
+        let globalTimeout: NodeJS.Timeout;
+
         if (hasCameraPermission === null) {
             getCameraPermission();
         }
 
-        return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [hasCameraPermission, getCameraPermission]);
+        // Fallback timer to force camera ready state
+        if (hasCameraPermission && !isCameraReady) {
+            globalTimeout = setTimeout(() => {
+                console.log("Global 5s fallback: Forcing camera ready state.");
+                setIsCameraReady(true);
+            }, 5000);
+        }
 
-    // Effect for initializing speech recognition
-    useEffect(() => {
         if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognitionRef.current = new SpeechRecognition();
@@ -189,12 +193,17 @@ export default function InterviewerPage() {
         }
 
         return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
             if (recognitionRef.current) {
                 recognitionRef.current.stop();
             }
+            clearTimeout(cameraReadyTimer);
+            clearTimeout(globalTimeout);
         };
-    }, [interviewState]);
-
+    }, [hasCameraPermission, getCameraPermission, interviewState, isCameraReady]);
+    
     useEffect(() => {
         if (currentAudio && audioRef.current) {
             audioRef.current.play().catch(e => console.error("Audio play failed", e));
@@ -331,6 +340,7 @@ export default function InterviewerPage() {
     
     const handleCameraReady = () => {
         if (!isCameraReady) {
+            console.log("Camera ready event fired.");
             setIsCameraReady(true);
         }
     };
@@ -418,7 +428,7 @@ export default function InterviewerPage() {
                         className="w-full h-full"
                     >
                          <Image
-                            src="/interviewer.png"
+                            src="https://picsum.photos/1280/720"
                             data-ai-hint="professional person"
                             fill
                             sizes="(max-width: 768px) 100vw, 50vw"
