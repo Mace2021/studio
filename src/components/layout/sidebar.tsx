@@ -22,6 +22,7 @@ const links = [
   { href: "/", label: "Home", icon: Home },
   { href: "/gantt", label: "Gantt Chart", icon: GanttChartSquare },
   { href: "/kanban", label: "Kanban Board", icon: Sheet },
+  { href: "/interviewer", label: "Interviewer", icon: Bot },
   { href: "/about", label: "About", icon: Info },
   { href: "/contact", label: "Contact", icon: Mail },
   { href: "/tutorial", label: "Tutorial", icon: Lightbulb },
