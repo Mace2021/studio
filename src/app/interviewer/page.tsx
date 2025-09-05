@@ -13,7 +13,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 import { generateQuestions } from '@/ai/flows/generate-questions-flow';
 import { getInterviewFeedback } from '@/ai/flows/interview-feedback-flow';
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
@@ -98,14 +97,14 @@ export default function InterviewerPage() {
     const streamRef = useRef<MediaStream | null>(null);
     const { toast } = useToast();
 
-    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer, status: prepTimerStatus } = useTimer({
+    const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer } = useTimer({
         initialTime: PREPARATION_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
         onTimeOver: () => startRecording(),
     });
 
-    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer, status: responseTimerStatus } = useTimer({
+    const { time: responseTime, start: startResponseTimer, pause: pauseResponseTimer, reset: resetResponseTimer } = useTimer({
         initialTime: RESPONSE_TIME,
         timerType: 'DECREMENTAL',
         endTime: 0,
@@ -117,7 +116,6 @@ export default function InterviewerPage() {
     });
 
     const getCameraPermission = useCallback(async () => {
-        console.log('Attempting to get camera permissions...');
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -127,18 +125,11 @@ export default function InterviewerPage() {
                 audio: true 
             });
             streamRef.current = stream;
-            console.log('Camera permission granted.');
             setHasCameraPermission(true);
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
-            // Quick fallback to ensure camera ready state
-            setTimeout(() => {
-                console.log('1-second timeout: Forcing camera ready state.');
-                if (!isCameraReady) setIsCameraReady(true);
-            }, 1000);
         } catch (error: any) {
-            console.error('Error accessing camera:', error);
             if (error.name === "NotAllowedError") {
                 setHasCameraPermission(false);
                 toast({
@@ -155,7 +146,7 @@ export default function InterviewerPage() {
                 });
             }
         }
-    }, [toast, isCameraReady]);
+    }, [toast]);
 
     // Effect for initializing camera
     useEffect(() => {
@@ -210,17 +201,6 @@ export default function InterviewerPage() {
         }
     }, [currentAudio]);
 
-    // Fallback timer to ensure camera becomes ready
-    useEffect(() => {
-        if (hasCameraPermission && !isCameraReady) {
-            const timer = setTimeout(() => {
-                console.log('5-second fallback: Setting camera to ready.');
-                setIsCameraReady(true);
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [hasCameraPermission, isCameraReady]);
-
     const generateAndPlayQuestion = async (questionText: string) => {
         setInterviewState('generating-audio');
         try {
@@ -231,7 +211,6 @@ export default function InterviewerPage() {
             setCurrentAudio(audio);
             setInterviewState('playing-audio');
         } catch (e) {
-            console.error("Audio generation failed:", e);
             toast({ variant: 'destructive', title: 'Audio Error', description: "Couldn't generate question audio. Starting without it." });
             setInterviewState('preparing');
             startPrepTimer();
@@ -257,19 +236,15 @@ export default function InterviewerPage() {
             
             await generateAndPlayQuestion(result.questions[0]);
         } catch (error) {
-            console.error("Failed to start interview:", error);
-            toast({ variant: 'destructive', title: 'Interview Error', description: "Could not generate questions. Please try again."});
             setInterviewState('error');
         }
     };
     
     const startRecording = () => {
         if (!streamRef.current) {
-            console.error('No stream available for recording');
             setInterviewState('error');
             return;
         }
-        console.log('Starting recording...');
         setInterviewState('recording');
         setCurrentTranscript('');
         resetResponseTimer();
@@ -285,7 +260,6 @@ export default function InterviewerPage() {
             };
             
             recorder.onstop = () => {
-                console.log('Recording stopped.');
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 setAnswers(prev => [...prev, { 
@@ -303,7 +277,6 @@ export default function InterviewerPage() {
                 recognitionRef.current.start();
             }
         } catch (error) {
-            console.error('Error starting recording:', error);
             setInterviewState('error');
         }
     };
@@ -344,7 +317,6 @@ export default function InterviewerPage() {
             const result = await getInterviewFeedback({ profession: selectedProfession, questionsAndAnswers });
             setFeedback(result.feedback);
         } catch (error) {
-            console.error("Feedback generation failed:", error);
             setFeedback("<p>Sorry, we couldn't generate feedback for this interview. Please try again later.</p>");
         }
         setInterviewState('finished');
@@ -354,11 +326,13 @@ export default function InterviewerPage() {
         setInterviewState('idle');
         setHasCameraPermission(null);
         setIsCameraReady(false);
+        getCameraPermission();
     };
     
     const handleCameraReady = () => {
-        console.log('Camera is ready (onCanPlay/onLoadedMetadata)');
-        setIsCameraReady(true);
+        if (!isCameraReady) {
+            setIsCameraReady(true);
+        }
     };
 
     const handleAudioEnded = () => {
@@ -554,5 +528,3 @@ export default function InterviewerPage() {
         </div>
     );
 }
-
-    

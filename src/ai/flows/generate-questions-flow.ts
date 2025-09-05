@@ -32,11 +32,11 @@ const prompt = ai.definePrompt({
   output: { schema: GenerateQuestionsOutputSchema },
   prompt: `You are an expert hiring manager. Generate a list of exactly 10 interview questions for a candidate applying for a "{{profession}}" position.
 
-The list should contain:
+The list must contain a diverse mix of question types:
 - 5 general, behavioral, or situational questions.
 - 5 technical or role-specific questions relevant to a "{{profession}}".
 
-Return the questions as a flat array of strings. Do not add any introductory text or numbering.
+Return the questions as a flat array of strings. Do not add any introductory text, numbering, or markdown formatting.
 `,
   config: {
     safetySettings: [
