@@ -133,12 +133,8 @@ export default function InterviewerPage() {
     }, []);
 
     const handleAudioEnded = useCallback(() => {
-        if (isUsingSpeechSynthesis) {
-            setIsUsingSpeechSynthesis(false);
-        }
-        if (audioRef.current) {
-            audioRef.current.pause();
-            // Setting src to empty string can cause issues, better to just let it be.
+        if (isUsingSpeechSynthesis && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
         }
         setInterviewState('preparing');
         resetPrepTimer();
@@ -147,11 +143,9 @@ export default function InterviewerPage() {
 
     // Enhanced text-to-speech function with fallback
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
-        // First, try the custom textToSpeech AI flow
         try {
             const result = await textToSpeech(text);
             if (!result.error && result.audio) {
-                // AI flow succeeded
                 return { audio: result.audio, success: true };
             }
             console.warn('Custom TTS failed, falling back to Speech Synthesis API. Reason:', result.error);
@@ -159,8 +153,7 @@ export default function InterviewerPage() {
             console.error('Error calling custom TTS flow:', error);
         }
 
-
-        // If AI flow failed, fall back to the browser's Speech Synthesis API
+        // Fallback to browser's Speech Synthesis API
         try {
             if ('speechSynthesis' in window) {
                 return new Promise((resolve) => {
@@ -188,7 +181,6 @@ export default function InterviewerPage() {
                     
                     utterance.onerror = (event) => {
                         console.error('Speech synthesis error:', event);
-                        // Even on error, we should proceed
                         handleAudioEnded();
                         resolve({ success: false });
                     };
@@ -643,4 +635,3 @@ export default function InterviewerPage() {
     );
 }
 
-    
