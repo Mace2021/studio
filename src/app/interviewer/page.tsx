@@ -537,7 +537,7 @@ export default function InterviewerPage() {
 
         return (
             <div className="w-full space-y-4">
-                <div className="aspect-video w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
+                <div className="h-[40vh] md:h-[50vh] w-full bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
                     <motion.div
                         animate={{ scale: interviewState === 'playing-audio' ? [1, 1.02, 1] : 1 }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
@@ -600,7 +600,7 @@ export default function InterviewerPage() {
     };
 
     return (
-        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+        <div className="flex min-h-[calc(80vh-4rem)] items-center justify-center p-4">
             <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
