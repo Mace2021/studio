@@ -1,5 +1,5 @@
 
-'use server';
+'use client';
 
 /**
  * @fileOverview An AI flow for converting text to speech.
@@ -68,7 +68,7 @@ const textToSpeechFlow = ai.defineFlow(
               responseModalities: ['AUDIO'],
               speechConfig: {
                 voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: 'Algenib' },
+                  prebuiltVoiceConfig: { voiceName: 'Chara' },
                 },
               },
             },
@@ -91,7 +91,7 @@ const textToSpeechFlow = ai.defineFlow(
         };
     } catch (error: any) {
         console.error("Text-to-speech flow error:", error);
-        return { error: "Failed to generate audio." };
+        return { error: `Failed to generate audio. ${error.message}` };
     }
   }
 );
