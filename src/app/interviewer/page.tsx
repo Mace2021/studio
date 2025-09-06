@@ -59,7 +59,6 @@ declare global {
     interface Window {
         SpeechRecognition: new () => SpeechRecognition;
         webkitSpeechRecognition: new () => SpeechRecognition;
-        speechSynthesis: SpeechSynthesis;
     }
 }
 
@@ -127,6 +126,19 @@ export default function InterviewerPage() {
         }
     }, []);
 
+    const handleAudioEnded = useCallback(() => {
+        if (isUsingSpeechSynthesis) {
+            setIsUsingSpeechSynthesis(false);
+        }
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = "";
+        }
+        setInterviewState('preparing');
+        resetPrepTimer();
+        startPrepTimer();
+    }, [isUsingSpeechSynthesis, resetPrepTimer, startPrepTimer]);
+
     // Enhanced text-to-speech function with fallback
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
         try {
@@ -148,12 +160,10 @@ export default function InterviewerPage() {
                         const utterance = new SpeechSynthesisUtterance(text);
                         speechSynthesisRef.current = utterance;
                         
-                        // Configure voice settings
                         utterance.rate = 0.9;
                         utterance.pitch = 1;
                         utterance.volume = 0.8;
                         
-                        // Try to use a professional-sounding voice
                         const voices = window.speechSynthesis.getVoices();
                         const preferredVoice = voices.find(voice => 
                             voice.name.includes('Google') || 
@@ -165,7 +175,8 @@ export default function InterviewerPage() {
                         }
                         
                         utterance.onend = () => {
-                            resolve({ success: true });
+                           handleAudioEnded(); // Use the central handler
+                           resolve({ success: true });
                         };
                         
                         utterance.onerror = (event) => {
@@ -184,7 +195,7 @@ export default function InterviewerPage() {
                 return { success: false };
             }
         }
-    }, []);
+    }, [handleAudioEnded]);
 
     // Effect for camera and speech recognition initialization
     useEffect(() => {
@@ -250,9 +261,9 @@ export default function InterviewerPage() {
         return () => {
             cleanupStream();
             if (recognitionRef.current) {
-                recognitionRef.current.abort();
+                recognitionRef.current.stop();
             }
-            if (speechSynthesisRef.current && 'speechSynthesis' in window) {
+            if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
             }
         };
@@ -305,7 +316,7 @@ export default function InterviewerPage() {
                 handleAudioEnded();
             });
         }
-    }, [interviewState, currentAudio, isUsingSpeechSynthesis, toast]);
+    }, [interviewState, currentAudio, isUsingSpeechSynthesis, toast, handleAudioEnded]);
     
     const handleStartInterview = async () => {
         if (hasCameraPermission !== true) {
@@ -424,16 +435,6 @@ export default function InterviewerPage() {
         }
         window.location.reload();
     };
-
-    const handleAudioEnded = useCallback(() => {
-        if (isUsingSpeechSynthesis) {
-            // This is handled by the onend event of the utterance now
-            return;
-        }
-        setInterviewState('preparing');
-        resetPrepTimer();
-        startPrepTimer();
-    }, [isUsingSpeechSynthesis, resetPrepTimer, startPrepTimer]);
 
     const renderInterviewerOverlay = () => {
         switch(interviewState) {
@@ -570,7 +571,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            {currentAudio && !isUsingSpeechSynthesis && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
+            {currentAudio && <audio ref={audioRef} onEnded={handleAudioEnded} hidden />}
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
