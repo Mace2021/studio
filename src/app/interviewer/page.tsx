@@ -550,7 +550,6 @@ export default function InterviewerPage() {
                             sizes="(max-width: 768px) 100vw, 50vw"
                             className="object-cover"
                             alt="Interviewer"
-                            priority
                         />
                     </motion.div>
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 text-white">
@@ -600,7 +599,7 @@ export default function InterviewerPage() {
     };
 
     return (
-        <div className="flex min-h-[calc(80vh-4rem)] items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center p-4">
             <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
