@@ -59,6 +59,7 @@ declare global {
     interface Window {
         SpeechRecognition: new () => SpeechRecognition;
         webkitSpeechRecognition: new () => SpeechRecognition;
+        speechSynthesis: SpeechSynthesis;
     }
 }
 
@@ -91,12 +92,14 @@ export default function InterviewerPage() {
     const [selectedProfession, setSelectedProfession] = useState<string>(professions[0]);
     
     const [currentAudio, setCurrentAudio] = useState<string | null>(null);
+    const [isUsingSpeechSynthesis, setIsUsingSpeechSynthesis] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const stopRecognitionOnPurpose = useRef(false);
     const streamRef = useRef<MediaStream | null>(null);
+    const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
     const { toast } = useToast();
 
     const { time: prepTime, start: startPrepTimer, reset: resetPrepTimer } = useTimer({
@@ -121,6 +124,65 @@ export default function InterviewerPage() {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
+        }
+    }, []);
+
+    // Enhanced text-to-speech function with fallback
+    const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
+        try {
+            // First try the custom textToSpeech function
+            const result = await textToSpeech(text);
+            if (!result.error && result.audio) {
+                return { audio: result.audio, success: true };
+            }
+            
+            console.warn('Custom TTS failed, falling back to Speech Synthesis API');
+            throw new Error('Custom TTS failed');
+        } catch (error) {
+            console.error('Custom TTS error:', error);
+            
+            // Fallback to browser's Speech Synthesis API
+            try {
+                if ('speechSynthesis' in window) {
+                    return new Promise((resolve) => {
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        speechSynthesisRef.current = utterance;
+                        
+                        // Configure voice settings
+                        utterance.rate = 0.9;
+                        utterance.pitch = 1;
+                        utterance.volume = 0.8;
+                        
+                        // Try to use a professional-sounding voice
+                        const voices = window.speechSynthesis.getVoices();
+                        const preferredVoice = voices.find(voice => 
+                            voice.name.includes('Google') || 
+                            voice.name.includes('Microsoft') || 
+                            voice.lang.includes('en-US')
+                        );
+                        if (preferredVoice) {
+                            utterance.voice = preferredVoice;
+                        }
+                        
+                        utterance.onend = () => {
+                            resolve({ success: true });
+                        };
+                        
+                        utterance.onerror = (event) => {
+                            console.error('Speech synthesis error:', event);
+                            resolve({ success: false });
+                        };
+                        
+                        window.speechSynthesis.speak(utterance);
+                        setIsUsingSpeechSynthesis(true);
+                    });
+                } else {
+                    return { success: false };
+                }
+            } catch (synthError) {
+                console.error('Speech Synthesis fallback failed:', synthError);
+                return { success: false };
+            }
         }
     }, []);
 
@@ -176,10 +238,22 @@ export default function InterviewerPage() {
             };
         }
 
+        // Load voices for speech synthesis
+        if ('speechSynthesis' in window) {
+            const loadVoices = () => {
+                window.speechSynthesis.getVoices();
+            };
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
         return () => {
             cleanupStream();
             if (recognitionRef.current) {
                 recognitionRef.current.abort();
+            }
+            if (speechSynthesisRef.current && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -187,30 +261,51 @@ export default function InterviewerPage() {
     
     const generateAndPlayQuestion = useCallback(async (questionText: string) => {
         setInterviewState('generating-audio');
+        setIsUsingSpeechSynthesis(false);
+        setCurrentAudio(null);
+        
         try {
-            const { audio, error } = await textToSpeech(questionText);
-            if (error || !audio) {
-                throw new Error(error || "Failed to generate audio.");
+            const result = await enhancedTextToSpeech(questionText);
+            
+            if (result.success) {
+                if (result.audio) {
+                    // Audio URL was generated successfully
+                    setCurrentAudio(result.audio);
+                    setInterviewState('playing-audio');
+                } else {
+                    // Using speech synthesis, which plays automatically.
+                    // The onend event of the utterance will trigger the next step.
+                    setInterviewState('playing-audio');
+                }
+            } else {
+                throw new Error("All TTS methods failed");
             }
-            setCurrentAudio(audio);
-            setInterviewState('playing-audio');
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Audio Error', description: "Couldn't generate question audio. Starting without it." });
+        } catch (error) {
+            console.error("TTS Error:", error);
+            toast({ 
+                variant: 'default', 
+                title: 'Audio Unavailable', 
+                description: "Continuing without question audio. You can read the question below." 
+            });
             setInterviewState('preparing');
             startPrepTimer();
         }
-    }, [toast, startPrepTimer]);
+    }, [enhancedTextToSpeech, toast, startPrepTimer]);
 
     useEffect(() => {
-        if (interviewState === 'playing-audio' && currentAudio && audioRef.current) {
+        if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
             audioRef.current.src = currentAudio;
             audioRef.current.play().catch(error => {
                 console.error("Audio play failed:", error);
-                toast({ variant: 'destructive', title: 'Audio Playback Error', description: "Could not play the question audio. Please ensure your browser allows autoplay." });
-                handleAudioEnded(); // Proceed to next state even if audio fails
+                toast({ 
+                    variant: 'default', 
+                    title: 'Audio Playback Issue', 
+                    description: "Continuing without audio. Please read the question below." 
+                });
+                handleAudioEnded();
             });
         }
-    }, [interviewState, currentAudio, toast]);
+    }, [interviewState, currentAudio, isUsingSpeechSynthesis, toast]);
     
     const handleStartInterview = async () => {
         if (hasCameraPermission !== true) {
@@ -229,6 +324,11 @@ export default function InterviewerPage() {
         } catch (error) {
             console.error("Error starting interview:", error);
             setInterviewState('error');
+            toast({
+                variant: 'destructive',
+                title: 'Interview Start Error',
+                description: 'Failed to generate questions. Please try again.'
+            });
         }
     };
     
@@ -311,20 +411,29 @@ export default function InterviewerPage() {
             const result = await getInterviewFeedback({ profession: selectedProfession, questionsAndAnswers });
             setFeedback(result.feedback);
         } catch (error) {
+            console.error("Feedback generation error:", error);
             setFeedback("<p>Sorry, we couldn't generate feedback for this interview. Please try again later.</p>");
         }
         setInterviewState('finished');
     };
 
     const restartInterview = () => {
+        // Clean up any ongoing speech synthesis
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
         window.location.reload();
     };
 
-    const handleAudioEnded = () => {
+    const handleAudioEnded = useCallback(() => {
+        if (isUsingSpeechSynthesis) {
+            // This is handled by the onend event of the utterance now
+            return;
+        }
         setInterviewState('preparing');
         resetPrepTimer();
         startPrepTimer();
-    };
+    }, [isUsingSpeechSynthesis, resetPrepTimer, startPrepTimer]);
 
     const renderInterviewerOverlay = () => {
         switch(interviewState) {
@@ -339,7 +448,7 @@ export default function InterviewerPage() {
             case 'generating-audio':
                 return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Preparing Question Audio...</p></div>;
             case 'playing-audio':
-                return <div className="text-center flex items-center gap-4"><Volume2 className="h-12 w-12 text-white" /> <p>Listen to the question...</p></div>;
+                return <div className="text-center flex items-center gap-4"><Volume2 className="h-12 w-12 text-white" /> <p>{isUsingSpeechSynthesis ? 'AI is speaking...' : 'Listen to the question...'}</p></div>;
             case 'analyzing':
                 return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Analyzing your answers...</p></div>;
             case 'finished':
@@ -434,7 +543,11 @@ export default function InterviewerPage() {
                 </div>
 
                 {currentQuestion && (
-                    <Card><CardContent className="p-4 text-center"><p className="font-semibold">{currentQuestion}</p></CardContent></Card>
+                    <Card>
+                        <CardContent className="p-4 text-center">
+                            <p className="font-semibold text-lg">{currentQuestion}</p>
+                        </CardContent>
+                    </Card>
                 )}
 
                 {interviewState === 'recording' && <Button onClick={stopRecording} variant="destructive" className="w-full">Stop Recording</Button>}
@@ -457,7 +570,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
+            {currentAudio && !isUsingSpeechSynthesis && <audio ref={audioRef} src={currentAudio} onEnded={handleAudioEnded} hidden />}
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
@@ -512,3 +625,4 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
