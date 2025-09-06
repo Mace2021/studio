@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { generateQuestions } from '@/ai/flows/generate-questions-flow';
 import { getInterviewFeedback } from '@/ai/flows/interview-feedback-flow';
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const RESPONSE_TIME = 90; // seconds
@@ -67,16 +68,35 @@ const professions = [
     "Product Manager",
     "UX/UI Designer",
     "Data Scientist",
+    "Data Analyst",
+    "DevOps Engineer",
+    "Cybersecurity Analyst",
     "Marketing Manager",
+    "Sales Representative",
     "Registered Nurse",
     "Doctor",
     "Pharmacist",
+    "Physical Therapist",
+    "Medical Assistant",
     "Accountant",
     "Financial Analyst",
+    "Investment Banker",
+    "Management Consultant",
     "Teacher",
+    "School Principal",
+    "Librarian",
     "Lawyer",
+    "Paralegal",
     "Graphic Designer",
+    "Architect",
+    "Chef",
     "Electrician",
+    "Plumber",
+    "Civil Engineer",
+    "Mechanical Engineer",
+    "Customer Service Representative",
+    "Human Resources Manager",
+    "Project Manager"
 ];
 
 interface Answer {
@@ -498,7 +518,9 @@ export default function InterviewerPage() {
                             <Button variant="outline">{selectedProfession} <ChevronDown className="ml-2 h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
+                            <ScrollArea className="h-72 w-48 rounded-md border">
+                                {professions.map(p => <DropdownMenuItem key={p} onSelect={() => setSelectedProfession(p)}>{p}</DropdownMenuItem>)}
+                            </ScrollArea>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Button onClick={handleStartInterview} disabled={hasCameraPermission !== true}>
@@ -579,7 +601,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            {currentAudio && !isUsingSpeechSynthesis && <audio ref={audioRef} onEnded={handleAudioEnded} hidden />}
+            <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
@@ -634,4 +656,3 @@ export default function InterviewerPage() {
         </div>
     );
 }
-
