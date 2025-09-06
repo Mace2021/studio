@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -141,59 +140,55 @@ export default function InterviewerPage() {
 
     // Enhanced text-to-speech function with fallback
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
+        // First, try the custom textToSpeech AI flow
+        const result = await textToSpeech(text);
+        
+        if (!result.error && result.audio) {
+            // AI flow succeeded
+            return { audio: result.audio, success: true };
+        }
+
+        // If AI flow failed, fall back to the browser's Speech Synthesis API
+        console.warn('Custom TTS failed, falling back to Speech Synthesis API. Reason:', result.error);
         try {
-            // First try the custom textToSpeech function
-            const result = await textToSpeech(text);
-            if (!result.error && result.audio) {
-                return { audio: result.audio, success: true };
-            }
-            
-            console.warn('Custom TTS failed, falling back to Speech Synthesis API');
-            throw new Error('Custom TTS failed');
-        } catch (error) {
-            console.error('Custom TTS error:', error);
-            
-            // Fallback to browser's Speech Synthesis API
-            try {
-                if ('speechSynthesis' in window) {
-                    return new Promise((resolve) => {
-                        const utterance = new SpeechSynthesisUtterance(text);
-                        speechSynthesisRef.current = utterance;
-                        
-                        utterance.rate = 0.9;
-                        utterance.pitch = 1;
-                        utterance.volume = 0.8;
-                        
-                        const voices = window.speechSynthesis.getVoices();
-                        const preferredVoice = voices.find(voice => 
-                            voice.name.includes('Google') || 
-                            voice.name.includes('Microsoft') || 
-                            voice.lang.includes('en-US')
-                        );
-                        if (preferredVoice) {
-                            utterance.voice = preferredVoice;
-                        }
-                        
-                        utterance.onend = () => {
-                           handleAudioEnded(); // Use the central handler
-                           resolve({ success: true });
-                        };
-                        
-                        utterance.onerror = (event) => {
-                            console.error('Speech synthesis error:', event);
-                            resolve({ success: false });
-                        };
-                        
-                        window.speechSynthesis.speak(utterance);
-                        setIsUsingSpeechSynthesis(true);
-                    });
-                } else {
-                    return { success: false };
-                }
-            } catch (synthError) {
-                console.error('Speech Synthesis fallback failed:', synthError);
+            if ('speechSynthesis' in window) {
+                return new Promise((resolve) => {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    speechSynthesisRef.current = utterance;
+                    
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1;
+                    utterance.volume = 0.8;
+                    
+                    const voices = window.speechSynthesis.getVoices();
+                    const preferredVoice = voices.find(voice => 
+                        voice.name.includes('Google') || 
+                        voice.name.includes('Microsoft') || 
+                        voice.lang.includes('en-US')
+                    );
+                    if (preferredVoice) {
+                        utterance.voice = preferredVoice;
+                    }
+                    
+                    utterance.onend = () => {
+                       handleAudioEnded(); // Use the central handler
+                       resolve({ success: true });
+                    };
+                    
+                    utterance.onerror = (event) => {
+                        console.error('Speech synthesis error:', event);
+                        resolve({ success: false });
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                    setIsUsingSpeechSynthesis(true);
+                });
+            } else {
                 return { success: false };
             }
+        } catch (synthError) {
+            console.error('Speech Synthesis fallback failed:', synthError);
+            return { success: false };
         }
     }, [handleAudioEnded]);
 
@@ -305,7 +300,6 @@ export default function InterviewerPage() {
 
     useEffect(() => {
         if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
-            audioRef.current.src = currentAudio;
             audioRef.current.play().catch(error => {
                 console.error("Audio play failed:", error);
                 toast({ 
@@ -626,4 +620,3 @@ export default function InterviewerPage() {
         </div>
     );
 }
-
