@@ -69,8 +69,14 @@ const professions = [
     "Data Scientist",
     "Marketing Manager",
     "Registered Nurse",
+    "Doctor",
+    "Pharmacist",
     "Accountant",
+    "Financial Analyst",
     "Teacher",
+    "Lawyer",
+    "Graphic Designer",
+    "Electrician",
 ];
 
 interface Answer {
@@ -142,15 +148,19 @@ export default function InterviewerPage() {
     // Enhanced text-to-speech function with fallback
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
         // First, try the custom textToSpeech AI flow
-        const result = await textToSpeech(text);
-        
-        if (!result.error && result.audio) {
-            // AI flow succeeded
-            return { audio: result.audio, success: true };
+        try {
+            const result = await textToSpeech(text);
+            if (!result.error && result.audio) {
+                // AI flow succeeded
+                return { audio: result.audio, success: true };
+            }
+            console.warn('Custom TTS failed, falling back to Speech Synthesis API. Reason:', result.error);
+        } catch (error) {
+            console.error('Error calling custom TTS flow:', error);
         }
 
+
         // If AI flow failed, fall back to the browser's Speech Synthesis API
-        console.warn('Custom TTS failed, falling back to Speech Synthesis API. Reason:', result.error);
         try {
             if ('speechSynthesis' in window) {
                 return new Promise((resolve) => {
@@ -632,3 +642,5 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
+    
