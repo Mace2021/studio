@@ -165,7 +165,7 @@ export default function InterviewerPage() {
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
         try {
             const result = await textToSpeech(text);
-            if (!result.error && result.audio) {
+            if (result && !result.error && result.audio) {
                 return { audio: result.audio, success: true };
             }
             console.warn('Custom TTS failed, falling back to Speech Synthesis API. Reason:', result.error);
@@ -556,7 +556,7 @@ export default function InterviewerPage() {
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 text-white">
                         {renderInterviewerOverlay()}
                     </div>
-                    <div className="absolute bottom-4 right-4 h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
+                    <div className="absolute bottom-4 right-4 h-1/3 sm:h-1/4 aspect-video bg-black rounded-md overflow-hidden border-2 border-white/50">
                         <video
                             ref={videoRef}
                             className={cn("w-full h-full object-cover transition-opacity", showPlayer ? 'opacity-0' : 'opacity-100')}
