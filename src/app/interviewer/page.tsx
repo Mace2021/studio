@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -131,7 +132,7 @@ export default function InterviewerPage() {
         }
         if (audioRef.current) {
             audioRef.current.pause();
-            audioRef.current.src = "";
+            // Setting src to empty string can cause issues, better to just let it be.
         }
         setInterviewState('preparing');
         resetPrepTimer();
@@ -177,6 +178,8 @@ export default function InterviewerPage() {
                     
                     utterance.onerror = (event) => {
                         console.error('Speech synthesis error:', event);
+                        // Even on error, we should proceed
+                        handleAudioEnded();
                         resolve({ success: false });
                     };
                     
@@ -239,7 +242,11 @@ export default function InterviewerPage() {
             
             recognition.onend = () => {
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
-                    recognitionRef.current?.start();
+                   try {
+                     recognitionRef.current?.start();
+                   } catch (e) {
+                    console.error("Error restarting recognition onend:", e);
+                   }
                 }
             };
         }
@@ -293,10 +300,10 @@ export default function InterviewerPage() {
                 title: 'Audio Unavailable', 
                 description: "Continuing without question audio. You can read the question below." 
             });
-            setInterviewState('preparing');
-            startPrepTimer();
+            // Directly move to preparing state
+            handleAudioEnded();
         }
-    }, [enhancedTextToSpeech, toast, startPrepTimer]);
+    }, [enhancedTextToSpeech, toast, handleAudioEnded]);
 
     useEffect(() => {
         if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
@@ -372,7 +379,12 @@ export default function InterviewerPage() {
             recorder.start();
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = false;
-                recognitionRef.current.start();
+                try {
+                    recognitionRef.current.start();
+                } catch (e) {
+                    // This can happen if recognition is already started, which is fine.
+                    console.warn("Could not start speech recognition:", e);
+                }
             }
         } catch (error) {
             console.error("Error starting recording:", error);
@@ -565,7 +577,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-            {currentAudio && <audio ref={audioRef} onEnded={handleAudioEnded} hidden />}
+            {currentAudio && !isUsingSpeechSynthesis && <audio ref={audioRef} onEnded={handleAudioEnded} hidden />}
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
@@ -620,3 +632,4 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
