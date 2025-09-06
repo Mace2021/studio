@@ -610,7 +610,7 @@ export default function InterviewerPage() {
                             Practice your interview skills by answering AI-generated questions for your chosen profession.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-center min-h-[60vh]">
+                    <CardContent className="flex items-center justify-center min-h-[50vh]">
                         {renderContent()}
                     </CardContent>
                 </Card>
