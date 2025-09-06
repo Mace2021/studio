@@ -1,5 +1,5 @@
 
-'use client';
+'use server';
 
 /**
  * @fileOverview An AI flow for converting text to speech.
