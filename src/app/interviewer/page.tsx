@@ -78,6 +78,7 @@ const professions = [
     "Pharmacist",
     "Physical Therapist",
     "Medical Assistant",
+    "Environmental Health",
     "Accountant",
     "Financial Analyst",
     "Investment Banker",
