@@ -556,10 +556,9 @@ export default function InterviewerPage() {
                         className="w-full h-full relative"
                     >
                          <Image
-                            src="https://picsum.photos/1280/720"
+                            src="https://picsum.photos/640/480"
                             data-ai-hint="professional person"
                             fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
                             className="object-cover"
                             alt="Interviewer"
                         />
