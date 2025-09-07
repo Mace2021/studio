@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,7 +22,7 @@ const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 3; // seconds
 const MAX_RETAKES = 2;
 
-type InterviewState = 'idle' | 'generating' | 'ready_to_play' | 'generating-audio' | 'playing-audio' | 'preparing' | 'recording' | 'reviewing' | 'analyzing' | 'finished' | 'error';
+type InterviewState = 'idle' | 'generating' | 'generating-audio' | 'playing-audio' | 'preparing' | 'recording' | 'reviewing' | 'analyzing' | 'finished' | 'error';
 
 // Add types for SpeechRecognition API
 interface SpeechRecognitionEvent extends Event {
@@ -297,43 +296,47 @@ export default function InterviewerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
-    const generateAndPlayQuestion = useCallback(async (questionText: string) => {
-        setInterviewState('generating-audio');
-        setIsUsingSpeechSynthesis(false);
-        setCurrentAudio(null);
-        
-        try {
-            const result = await enhancedTextToSpeech(questionText);
+    // Effect to generate and play question when index changes
+    useEffect(() => {
+        const generateAndPlayQuestion = async () => {
+            setInterviewState('generating-audio');
+            setIsUsingSpeechSynthesis(false);
+            setCurrentAudio(null);
             
-            if (result.success) {
-                if (result.audio) {
-                    // Audio URL was generated successfully
-                    setCurrentAudio(result.audio);
-                    setInterviewState('playing-audio');
+            try {
+                const questionText = questions[currentQuestionIndex];
+                const result = await enhancedTextToSpeech(questionText);
+                
+                if (result.success) {
+                    if (result.audio) {
+                        // Audio URL was generated successfully
+                        setCurrentAudio(result.audio);
+                        setInterviewState('playing-audio');
+                    } else {
+                        // Using speech synthesis, which plays automatically.
+                        // The onend event of the utterance will trigger the next step.
+                        setInterviewState('playing-audio');
+                    }
                 } else {
-                    // Using speech synthesis, which plays automatically.
-                    // The onend event of the utterance will trigger the next step.
-                    setInterviewState('playing-audio');
+                    throw new Error("All TTS methods failed");
                 }
-            } else {
-                throw new Error("All TTS methods failed");
+            } catch (error) {
+                console.error("TTS Error:", error);
+                toast({ 
+                    variant: 'default', 
+                    title: 'Audio Unavailable', 
+                    description: "Continuing without question audio. You can read the question below." 
+                });
+                // Directly move to preparing state
+                handleAudioEnded();
             }
-        } catch (error) {
-            console.error("TTS Error:", error);
-            toast({ 
-                variant: 'default', 
-                title: 'Audio Unavailable', 
-                description: "Continuing without question audio. You can read the question below." 
-            });
-            // Directly move to preparing state
-            handleAudioEnded();
-        }
-    }, [enhancedTextToSpeech, toast, handleAudioEnded]);
+        };
 
-    const handlePlayQuestion = async () => {
-        const questionText = questions[currentQuestionIndex];
-        await generateAndPlayQuestion(questionText);
-    };
+        if (interviewState === 'generating' && questions.length > 0) {
+            generateAndPlayQuestion();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [interviewState, questions, currentQuestionIndex, enhancedTextToSpeech, toast, handleAudioEnded]);
 
     useEffect(() => {
         if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
@@ -362,7 +365,6 @@ export default function InterviewerPage() {
             setAnswers([]);
             setCurrentQuestionIndex(0);
             setRetakesLeft(MAX_RETAKES);
-            setInterviewState('ready_to_play');
         } catch (error) {
             console.error("Error starting interview:", error);
             setInterviewState('error');
@@ -438,7 +440,7 @@ export default function InterviewerPage() {
         if (retakesLeft > 0) {
             setRetakesLeft(prev => prev - 1);
             setAnswers(prev => prev.slice(0, -1)); // Remove last answer
-            setInterviewState('ready_to_play');
+            setInterviewState('generating'); // This will trigger the audio generation again
         }
     };
 
@@ -447,7 +449,7 @@ export default function InterviewerPage() {
             const nextIdx = currentQuestionIndex + 1;
             setCurrentQuestionIndex(nextIdx);
             setRetakesLeft(MAX_RETAKES);
-            setInterviewState('ready_to_play');
+            setInterviewState('generating'); // This will trigger the next question
         } else {
             finishInterview();
         }
@@ -476,8 +478,6 @@ export default function InterviewerPage() {
 
     const renderInterviewerOverlay = () => {
         switch(interviewState) {
-            case 'ready_to_play':
-                return <div className="text-center"><Button onClick={handlePlayQuestion}><Play className="mr-2 h-4 w-4" /> Play Question</Button></div>;
             case 'preparing':
                 return <div className="text-center"><h2 className="text-xl font-semibold mb-4">Get Ready!</h2><p className="text-4xl font-bold">{prepTime}</p></div>;
             case 'recording':
@@ -485,9 +485,8 @@ export default function InterviewerPage() {
             case 'reviewing':
                 return <div className="text-center"><h2 className="text-xl font-semibold">Answer Submitted!</h2><Check className="h-12 w-12 text-green-500 mx-auto mt-2" /></div>;
             case 'generating':
-                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Generating Questions...</p></div>;
             case 'generating-audio':
-                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Preparing Question Audio...</p></div>;
+                return <div className="text-center"><Loader2 className="h-12 w-12 text-white animate-spin mr-2" /> <p>Preparing Question...</p></div>;
             case 'playing-audio':
                 return <div className="text-center flex items-center gap-4"><Volume2 className="h-12 w-12 text-white" /> <p>{isUsingSpeechSynthesis ? 'AI is speaking...' : 'Listen to the question...'}</p></div>;
             case 'analyzing':
@@ -667,5 +666,3 @@ export default function InterviewerPage() {
         </div>
     );
 }
-
-    
