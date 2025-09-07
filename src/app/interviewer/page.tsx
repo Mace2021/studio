@@ -23,7 +23,7 @@ const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 3; // seconds
 const MAX_RETAKES = 2;
 
-type InterviewState = 'idle' | 'generating' | 'generating-audio' | 'playing-audio' | 'preparing' | 'recording' | 'reviewing' | 'analyzing' | 'finished' | 'error';
+type InterviewState = 'idle' | 'generating' | 'ready_to_play' | 'generating-audio' | 'playing-audio' | 'preparing' | 'recording' | 'reviewing' | 'analyzing' | 'finished' | 'error';
 
 // Add types for SpeechRecognition API
 interface SpeechRecognitionEvent extends Event {
@@ -266,7 +266,9 @@ export default function InterviewerPage() {
             recognition.onend = () => {
                 if (!stopRecognitionOnPurpose.current && interviewState === 'recording') {
                    try {
-                     recognitionRef.current?.start();
+                     if (recognitionRef.current) {
+                        recognitionRef.current.start();
+                     }
                    } catch (e) {
                     console.error("Error restarting recognition onend:", e);
                    }
@@ -328,6 +330,11 @@ export default function InterviewerPage() {
         }
     }, [enhancedTextToSpeech, toast, handleAudioEnded]);
 
+    const handlePlayQuestion = async () => {
+        const questionText = questions[currentQuestionIndex];
+        await generateAndPlayQuestion(questionText);
+    };
+
     useEffect(() => {
         if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
             audioRef.current.play().catch(error => {
@@ -355,7 +362,7 @@ export default function InterviewerPage() {
             setAnswers([]);
             setCurrentQuestionIndex(0);
             setRetakesLeft(MAX_RETAKES);
-            await generateAndPlayQuestion(result.questions[0]);
+            setInterviewState('ready_to_play');
         } catch (error) {
             console.error("Error starting interview:", error);
             setInterviewState('error');
@@ -403,7 +410,9 @@ export default function InterviewerPage() {
             if (recognitionRef.current) {
                 stopRecognitionOnPurpose.current = false;
                 try {
-                    recognitionRef.current.start();
+                   if (recognitionRef.current) {
+                     recognitionRef.current.start();
+                   }
                 } catch (e) {
                     // This can happen if recognition is already started, which is fine.
                     console.warn("Could not start speech recognition:", e);
@@ -429,7 +438,7 @@ export default function InterviewerPage() {
         if (retakesLeft > 0) {
             setRetakesLeft(prev => prev - 1);
             setAnswers(prev => prev.slice(0, -1)); // Remove last answer
-            generateAndPlayQuestion(questions[currentQuestionIndex]);
+            setInterviewState('ready_to_play');
         }
     };
 
@@ -438,7 +447,7 @@ export default function InterviewerPage() {
             const nextIdx = currentQuestionIndex + 1;
             setCurrentQuestionIndex(nextIdx);
             setRetakesLeft(MAX_RETAKES);
-            generateAndPlayQuestion(questions[nextIdx]);
+            setInterviewState('ready_to_play');
         } else {
             finishInterview();
         }
@@ -467,6 +476,8 @@ export default function InterviewerPage() {
 
     const renderInterviewerOverlay = () => {
         switch(interviewState) {
+            case 'ready_to_play':
+                return <div className="text-center"><Button onClick={handlePlayQuestion}><Play className="mr-2 h-4 w-4" /> Play Question</Button></div>;
             case 'preparing':
                 return <div className="text-center"><h2 className="text-xl font-semibold mb-4">Get Ready!</h2><p className="text-4xl font-bold">{prepTime}</p></div>;
             case 'recording':
@@ -656,3 +667,5 @@ export default function InterviewerPage() {
         </div>
     );
 }
+
+    
