@@ -153,11 +153,14 @@ export default function InterviewerPage() {
         }
     }, []);
 
-    const startPreparation = useCallback(() => {
+    const handleAudioEnded = useCallback(() => {
+        if (isUsingSpeechSynthesis && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
         setInterviewState('preparing');
         resetPrepTimer();
         startPrepTimer();
-    }, [resetPrepTimer, startPrepTimer]);
+    }, [isUsingSpeechSynthesis, resetPrepTimer, startPrepTimer]);
 
     // Enhanced text-to-speech function with fallback
     const enhancedTextToSpeech = useCallback(async (text: string): Promise<{ audio?: string; success: boolean }> => {
@@ -193,13 +196,13 @@ export default function InterviewerPage() {
                     }
                     
                     utterance.onend = () => {
-                       startPreparation();
+                       handleAudioEnded(); // Use the central handler
                        resolve({ success: true });
                     };
                     
                     utterance.onerror = (event) => {
                         console.error('Speech synthesis error:', event);
-                        startPreparation();
+                        handleAudioEnded();
                         resolve({ success: false });
                     };
                     
@@ -213,7 +216,7 @@ export default function InterviewerPage() {
             console.error('Speech Synthesis fallback failed:', synthError);
             return { success: false };
         }
-    }, [startPreparation]);
+    }, [handleAudioEnded]);
 
     // Effect for camera and speech recognition initialization
     useEffect(() => {
@@ -294,6 +297,21 @@ export default function InterviewerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
+    // Effect to play question audio when it's ready
+    useEffect(() => {
+        if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
+            audioRef.current.play().catch(error => {
+                console.error("Audio play failed:", error);
+                toast({ 
+                    variant: 'default', 
+                    title: 'Audio Playback Issue', 
+                    description: "Continuing without audio. Please read the question below." 
+                });
+                handleAudioEnded();
+            });
+        }
+    }, [interviewState, currentAudio, isUsingSpeechSynthesis, toast, handleAudioEnded]);
+    
     const handleStartInterview = async () => {
         if (hasCameraPermission !== true) {
             toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please grant camera permission to start.' });
@@ -340,25 +358,28 @@ export default function InterviewerPage() {
             const questionText = questions[currentQuestionIndex];
             const result = await enhancedTextToSpeech(questionText);
             
-            if (result.success && result.audio && audioRef.current) {
-                // Not using speech synthesis, so we need to play the audio manually
-                setInterviewState('playing-audio');
-                audioRef.current.src = result.audio;
-                await audioRef.current.play();
-                startPreparation(); // Manually call this after play resolves
-            } else if (!result.success) {
-                 // All TTS methods failed, or speech synthesis failed
+            if (result.success) {
+                if (result.audio) {
+                    setCurrentAudio(result.audio);
+                    setInterviewState('playing-audio');
+                } else {
+                    // This handles the case where browser speech synthesis is used,
+                    // which plays audio directly without returning a data URL.
+                    // The onend handler in enhancedTextToSpeech will then call handleAudioEnded.
+                    setInterviewState('playing-audio');
+                }
+            } else {
                 throw new Error("All TTS methods failed");
             }
-            // If speech synthesis was used, startPreparation() is called by its onend handler
         } catch (error) {
-            console.error("TTS or Audio Playback Error:", error);
+            console.error("TTS Error:", error);
             toast({ 
                 variant: 'default', 
                 title: 'Audio Unavailable', 
                 description: "Continuing without question audio. You can read the question below." 
             });
-            startPreparation();
+            // Directly move to the next state if TTS fails completely
+            handleAudioEnded();
         }
     };
     
@@ -606,7 +627,7 @@ export default function InterviewerPage() {
 
     return (
         <div className="flex flex-col items-center justify-center p-4">
-            <audio ref={audioRef} hidden />
+            <audio ref={audioRef} onEnded={handleAudioEnded} hidden />
             <div className="w-full max-w-4xl space-y-6">
                 <Card>
                     <CardHeader>
