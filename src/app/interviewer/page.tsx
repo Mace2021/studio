@@ -18,7 +18,7 @@ import { getInterviewFeedback } from '@/ai/flows/interview-feedback-flow';
 import { textToSpeech } from '@/ai/flows/text-to-speech-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-
+const SILENT_AUDIO_URL = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKn/wANU64AAAAAJwAAAAAAAD6fP4H4AAAACgAAAAA/j44AAAAAEA0AAABEVFNJRAAAAAAASUVOQwAAAAAAAFJBSkVOQwAAAAAAAFJUUkMAAAAAAABQcm9kdWNlciBWTk9XAAAAAAA+j44A/wAAAA0AAAAAAAAAAAAA';
 const RESPONSE_TIME = 90; // seconds
 const PREPARATION_TIME = 3; // seconds
 const MAX_RETAKES = 2;
@@ -337,7 +337,7 @@ export default function InterviewerPage() {
             generateAndPlayQuestion();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [interviewState, questions, currentQuestionIndex, enhancedTextToSpeech, toast, handleAudioEnded]);
+    }, [interviewState, questions, currentQuestionIndex]);
 
     useEffect(() => {
         if (interviewState === 'playing-audio' && currentAudio && audioRef.current && !isUsingSpeechSynthesis) {
@@ -358,6 +358,18 @@ export default function InterviewerPage() {
             toast({ variant: 'destructive', title: 'Camera Not Ready', description: 'Please grant camera permission to start.' });
             return;
         }
+
+        // --- AUDIO UNLOCK LOGIC ---
+        if (audioRef.current) {
+            try {
+                audioRef.current.src = SILENT_AUDIO_URL;
+                await audioRef.current.play();
+            } catch (error) {
+                console.warn("Audio unlock failed, playback may not work.", error);
+            }
+        }
+        // --- END AUDIO UNLOCK ---
+
         setInterviewState('generating');
         setFeedback(null);
         try {
